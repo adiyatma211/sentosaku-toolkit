@@ -1,0 +1,308 @@
+import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
+
+import '../../../core/constants/app_constants.dart';
+import '../../../core/navigation/app_back_scope.dart';
+import '../../schedules/data/schedule_repository.dart';
+import '../../schedules/providers/schedule_provider.dart';
+import '../data/session_repository.dart';
+import '../providers/session_provider.dart';
+
+class SessionFormScreen extends ConsumerStatefulWidget {
+  const SessionFormScreen({super.key, required this.scheduleId});
+
+  final int scheduleId;
+
+  @override
+  ConsumerState<SessionFormScreen> createState() => _SessionFormScreenState();
+}
+
+class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
+  final _formKey = GlobalKey<FormState>();
+  final _materialController = TextEditingController();
+  final _homeworkController = TextEditingController();
+  final _progressNoteController = TextEditingController();
+  final _feeAmountController = TextEditingController();
+
+  String _attendanceStatus = AttendanceStatus.present;
+  bool _initialized = false;
+
+  @override
+  void dispose() {
+    _materialController.dispose();
+    _homeworkController.dispose();
+    _progressNoteController.dispose();
+    _feeAmountController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final scheduleState = ref.watch(scheduleDetailProvider(widget.scheduleId));
+    final submitState = ref.watch(sessionFormNotifierProvider);
+
+    return AppBackScope(
+      fallbackPath: '/schedules/${widget.scheduleId}',
+      child: Scaffold(
+        appBar: AppBar(title: const Text('Buat sesi')),
+        body: scheduleState.when(
+          data: (detail) {
+            if (detail == null) {
+              return const Center(child: Text('Jadwal tidak ditemukan.'));
+            }
+            _initialize(detail);
+
+            return _SessionFormContent(
+              formKey: _formKey,
+              detail: detail,
+              attendanceStatus: _attendanceStatus,
+              materialController: _materialController,
+              homeworkController: _homeworkController,
+              progressNoteController: _progressNoteController,
+              feeAmountController: _feeAmountController,
+              isSubmitting: submitState.isLoading,
+              onAttendanceChanged: (value) {
+                if (value == null) return;
+                setState(() => _attendanceStatus = value);
+              },
+              onSubmit: () => _submit(detail),
+            );
+          },
+          loading: () => const Center(child: CircularProgressIndicator()),
+          error: (error, stackTrace) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Text('Gagal memuat jadwal: $error'),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _initialize(ScheduleDetail detail) {
+    if (_initialized) return;
+    _feeAmountController.text = detail.student.rateAmount.toString();
+    _initialized = true;
+  }
+
+  Future<void> _submit(ScheduleDetail detail) async {
+    if (!_formKey.currentState!.validate()) return;
+
+    final feeAmount = int.parse(_feeAmountController.text.trim());
+    try {
+      final sessionId = await ref
+          .read(sessionFormNotifierProvider.notifier)
+          .createSessionFromSchedule(
+            SessionFormData(
+              scheduleId: detail.schedule.id,
+              attendanceStatus: _attendanceStatus,
+              material: _materialController.text,
+              homework: _homeworkController.text,
+              progressNote: _progressNoteController.text,
+              feeAmount: feeAmount,
+            ),
+          );
+      if (!mounted) return;
+      context.go('/sessions/$sessionId');
+    } catch (error) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Gagal menyimpan sesi: $error')));
+    }
+  }
+}
+
+class _SessionFormContent extends StatelessWidget {
+  const _SessionFormContent({
+    required this.formKey,
+    required this.detail,
+    required this.attendanceStatus,
+    required this.materialController,
+    required this.homeworkController,
+    required this.progressNoteController,
+    required this.feeAmountController,
+    required this.isSubmitting,
+    required this.onAttendanceChanged,
+    required this.onSubmit,
+  });
+
+  final GlobalKey<FormState> formKey;
+  final ScheduleDetail detail;
+  final String attendanceStatus;
+  final TextEditingController materialController;
+  final TextEditingController homeworkController;
+  final TextEditingController progressNoteController;
+  final TextEditingController feeAmountController;
+  final bool isSubmitting;
+  final ValueChanged<String?> onAttendanceChanged;
+  final VoidCallback onSubmit;
+
+  @override
+  Widget build(BuildContext context) {
+    final dateFormat = DateFormat('d MMMM yyyy');
+    final timeFormat = DateFormat.Hm();
+    final schedule = detail.schedule;
+    final canAutoInvoice =
+        attendanceStatus == AttendanceStatus.present &&
+        detail.student.rateType == RateType.perSession;
+
+    return Form(
+      key: formKey,
+      child: ListView(
+        padding: const EdgeInsets.all(16),
+        children: [
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    detail.student.name,
+                    style: Theme.of(context).textTheme.titleLarge,
+                  ),
+                  const SizedBox(height: 8),
+                  _InfoRow(label: 'Mata pelajaran', value: detail.subject.name),
+                  _InfoRow(
+                    label: 'Tanggal',
+                    value: dateFormat.format(schedule.date),
+                  ),
+                  _InfoRow(
+                    label: 'Waktu',
+                    value:
+                        '${timeFormat.format(schedule.startTime)} - ${timeFormat.format(schedule.endTime)}',
+                  ),
+                ],
+              ),
+            ),
+          ),
+          const SizedBox(height: 16),
+          DropdownButtonFormField<String>(
+            value: attendanceStatus,
+            decoration: const InputDecoration(
+              labelText: 'Status absensi',
+              border: OutlineInputBorder(),
+            ),
+            items: const [
+              DropdownMenuItem(
+                value: AttendanceStatus.present,
+                child: Text('Hadir'),
+              ),
+              DropdownMenuItem(
+                value: AttendanceStatus.permission,
+                child: Text('Izin'),
+              ),
+              DropdownMenuItem(
+                value: AttendanceStatus.absent,
+                child: Text('Absen'),
+              ),
+              DropdownMenuItem(
+                value: AttendanceStatus.cancelled,
+                child: Text('Batal'),
+              ),
+              DropdownMenuItem(
+                value: AttendanceStatus.rescheduled,
+                child: Text('Reschedule'),
+              ),
+            ],
+            onChanged: isSubmitting ? null : onAttendanceChanged,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: materialController,
+            decoration: const InputDecoration(
+              labelText: 'Materi',
+              border: OutlineInputBorder(),
+            ),
+            minLines: 2,
+            maxLines: 4,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: homeworkController,
+            decoration: const InputDecoration(
+              labelText: 'PR / tugas',
+              border: OutlineInputBorder(),
+            ),
+            minLines: 2,
+            maxLines: 4,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: progressNoteController,
+            decoration: const InputDecoration(
+              labelText: 'Catatan perkembangan',
+              border: OutlineInputBorder(),
+            ),
+            minLines: 2,
+            maxLines: 5,
+          ),
+          const SizedBox(height: 12),
+          TextFormField(
+            controller: feeAmountController,
+            decoration: const InputDecoration(
+              labelText: 'Biaya sesi',
+              prefixText: 'Rp ',
+              border: OutlineInputBorder(),
+            ),
+            keyboardType: TextInputType.number,
+            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            validator: (value) {
+              final amount = int.tryParse(value?.trim() ?? '');
+              if (amount == null) return 'Biaya wajib diisi';
+              if (amount < 0) return 'Biaya tidak valid';
+              return null;
+            },
+          ),
+          const SizedBox(height: 8),
+          Text(
+            canAutoInvoice
+                ? 'Invoice belum dibayar akan dibuat otomatis jika biaya lebih dari 0.'
+                : 'Invoice otomatis hanya dibuat untuk sesi hadir dengan tarif per sesi.',
+            style: Theme.of(context).textTheme.bodySmall,
+          ),
+          const SizedBox(height: 24),
+          FilledButton.icon(
+            onPressed: isSubmitting ? null : onSubmit,
+            icon: isSubmitting
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.save_outlined),
+            label: const Text('Simpan sesi'),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoRow extends StatelessWidget {
+  const _InfoRow({required this.label, required this.value});
+
+  final String label;
+  final String? value;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 4),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SizedBox(
+            width: 120,
+            child: Text(label, style: Theme.of(context).textTheme.labelLarge),
+          ),
+          Expanded(child: Text(value == null || value!.isEmpty ? '-' : value!)),
+        ],
+      ),
+    );
+  }
+}

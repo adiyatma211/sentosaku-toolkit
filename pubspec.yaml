@@ -1,0 +1,37 @@
+name: sentosa_catat_app
+description: "A new Flutter project."
+publish_to: 'none'
+version: 1.0.0+1
+
+environment:
+  sdk: ^3.8.1
+
+dependencies:
+  flutter:
+    sdk: flutter
+  cupertino_icons: ^1.0.8
+  drift: ^2.28.1
+  flutter_riverpod: ^3.0.3
+  go_router: ^17.0.0
+  intl: ^0.20.2
+  path: ^1.9.1
+  path_provider: ^2.1.5
+  sqlite3_flutter_libs: ^0.5.36
+  pdf: ^3.11.3
+  csv: ^6.0.0
+  file_picker: ^11.0.2
+  sqlite3: ^2.9.4
+  talker: ^5.1.17
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  build_runner: ^2.5.4
+  drift_dev: ^2.28.1
+  flutter_lints: ^5.0.0
+
+flutter:
+  uses-material-design: true
+
+  assets:
+    - assets/splash_assets/
