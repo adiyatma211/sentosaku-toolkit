@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/feedback/app_toast.dart';
 import '../../../core/navigation/app_back_scope.dart';
 import '../../schedules/data/schedule_repository.dart';
 import '../../schedules/providers/schedule_provider.dart';
@@ -110,9 +111,7 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
       context.go('/sessions/$sessionId');
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Gagal menyimpan sesi: $error')));
+      AppToast.error(context, 'Gagal menyimpan sesi', details: '$error');
     }
   }
 }

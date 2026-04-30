@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/feedback/app_toast.dart';
 import '../../../core/navigation/app_back_scope.dart';
 import '../providers/export_report_provider.dart';
 import '../providers/report_provider.dart';
@@ -20,6 +21,7 @@ class UnpaidReportScreen extends ConsumerWidget {
       symbol: 'Rp',
       decimalDigits: 0,
     );
+    final colorScheme = Theme.of(context).colorScheme;
 
     return AppBackScope(
       fallbackPath: '/reports',
@@ -52,7 +54,7 @@ class UnpaidReportScreen extends ConsumerWidget {
         body: RefreshIndicator(
           onRefresh: () => ref.refresh(unpaidReportProvider.future),
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 8, 16, 32),
             children: [
               reportState.when(
                 data: (report) => Column(
@@ -63,19 +65,30 @@ class UnpaidReportScreen extends ConsumerWidget {
                       value: currencyFormat.format(report.totalOutstanding),
                       subtitle: '${report.invoiceCount} invoice belum lunas',
                       icon: Icons.receipt_long,
+                      accentColor: colorScheme.error,
                     ),
                     const SizedBox(height: 16),
-                    Text(
-                      'Daftar invoice',
-                      style: Theme.of(context).textTheme.titleLarge,
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            'Daftar invoice',
+                            style: Theme.of(context).textTheme.titleLarge
+                                ?.copyWith(fontWeight: FontWeight.w800),
+                          ),
+                        ),
+                        _CountBadge(
+                          label: '${report.rows.length} invoice',
+                          color: colorScheme.error,
+                        ),
+                      ],
                     ),
                     const SizedBox(height: 8),
                     if (report.rows.isEmpty)
-                      const Card(
-                        child: Padding(
-                          padding: EdgeInsets.all(16),
-                          child: Text('Tidak ada tagihan belum dibayar.'),
-                        ),
+                      const _ReportEmptyState(
+                        icon: Icons.task_alt_rounded,
+                        title: 'Semua tagihan aman',
+                        message: 'Tidak ada tagihan belum dibayar saat ini.',
                       )
                     else
                       ...report.rows.map((row) => UnpaidInvoiceTile(row: row)),
@@ -113,16 +126,80 @@ class UnpaidReportScreen extends ConsumerWidget {
         _ExportType.csv => await notifier.exportCsv(),
       };
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Export berhasil: ${file.path}')));
+      AppToast.success(context, 'Export berhasil', details: file.path);
     } catch (error) {
       if (!context.mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Export gagal: $error')));
+      AppToast.error(context, 'Export gagal', details: '$error');
     }
   }
 }
 
 enum _ExportType { pdf, csv }
+
+class _CountBadge extends StatelessWidget {
+  const _CountBadge({required this.label, required this.color});
+
+  final String label;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: .12),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w900,
+        ),
+      ),
+    );
+  }
+}
+
+class _ReportEmptyState extends StatelessWidget {
+  const _ReportEmptyState({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(22),
+        child: Column(
+          children: [
+            Icon(icon, size: 36, color: colorScheme.primary),
+            const SizedBox(height: 10),
+            Text(
+              title,
+              style: Theme.of(
+                context,
+              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w900),
+            ),
+            const SizedBox(height: 4),
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

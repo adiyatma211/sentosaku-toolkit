@@ -9,18 +9,31 @@ class StudentStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final (label, color) = switch (status) {
-      StudentStatus.pending => ('Pending', Colors.orange),
-      StudentStatus.inactive => ('Nonaktif', Colors.grey),
-      _ => ('Aktif', Colors.green),
+    final colorScheme = Theme.of(context).colorScheme;
+    final (label, color, foreground) = switch (status) {
+      StudentStatus.pending => (
+        'Pending',
+        colorScheme.tertiaryContainer,
+        colorScheme.onTertiaryContainer,
+      ),
+      StudentStatus.inactive => (
+        'Nonaktif',
+        colorScheme.surfaceContainerHighest,
+        colorScheme.onSurfaceVariant,
+      ),
+      _ => (
+        'Aktif',
+        colorScheme.secondaryContainer,
+        colorScheme.onSecondaryContainer,
+      ),
     };
 
     return Chip(
       label: Text(label),
       visualDensity: VisualDensity.compact,
-      backgroundColor: color.withValues(alpha: 0.12),
-      side: BorderSide(color: color.withValues(alpha: 0.4)),
-      labelStyle: TextStyle(color: color.shade700),
+      backgroundColor: color,
+      side: BorderSide(color: foreground.withValues(alpha: 0.18)),
+      labelStyle: TextStyle(color: foreground, fontWeight: FontWeight.w700),
     );
   }
 }

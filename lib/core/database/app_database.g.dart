@@ -885,9 +885,10 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
   late final GeneratedColumn<int> defaultRateAmount = GeneratedColumn<int>(
     'default_rate_amount',
     aliasedName,
-    true,
+    false,
     type: DriftSqlType.int,
     requiredDuringInsert: false,
+    defaultValue: const Constant(0),
   );
   static const VerificationMeta _isActiveMeta = const VerificationMeta(
     'isActive',
@@ -1018,7 +1019,7 @@ class $SubjectsTable extends Subjects with TableInfo<$SubjectsTable, Subject> {
       defaultRateAmount: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}default_rate_amount'],
-      ),
+      )!,
       isActive: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_active'],
@@ -1044,7 +1045,7 @@ class Subject extends DataClass implements Insertable<Subject> {
   final int id;
   final int? studentId;
   final String name;
-  final int? defaultRateAmount;
+  final int defaultRateAmount;
   final bool isActive;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -1052,7 +1053,7 @@ class Subject extends DataClass implements Insertable<Subject> {
     required this.id,
     this.studentId,
     required this.name,
-    this.defaultRateAmount,
+    required this.defaultRateAmount,
     required this.isActive,
     required this.createdAt,
     required this.updatedAt,
@@ -1065,9 +1066,7 @@ class Subject extends DataClass implements Insertable<Subject> {
       map['student_id'] = Variable<int>(studentId);
     }
     map['name'] = Variable<String>(name);
-    if (!nullToAbsent || defaultRateAmount != null) {
-      map['default_rate_amount'] = Variable<int>(defaultRateAmount);
-    }
+    map['default_rate_amount'] = Variable<int>(defaultRateAmount);
     map['is_active'] = Variable<bool>(isActive);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -1081,9 +1080,7 @@ class Subject extends DataClass implements Insertable<Subject> {
           ? const Value.absent()
           : Value(studentId),
       name: Value(name),
-      defaultRateAmount: defaultRateAmount == null && nullToAbsent
-          ? const Value.absent()
-          : Value(defaultRateAmount),
+      defaultRateAmount: Value(defaultRateAmount),
       isActive: Value(isActive),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -1099,7 +1096,7 @@ class Subject extends DataClass implements Insertable<Subject> {
       id: serializer.fromJson<int>(json['id']),
       studentId: serializer.fromJson<int?>(json['studentId']),
       name: serializer.fromJson<String>(json['name']),
-      defaultRateAmount: serializer.fromJson<int?>(json['defaultRateAmount']),
+      defaultRateAmount: serializer.fromJson<int>(json['defaultRateAmount']),
       isActive: serializer.fromJson<bool>(json['isActive']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -1112,7 +1109,7 @@ class Subject extends DataClass implements Insertable<Subject> {
       'id': serializer.toJson<int>(id),
       'studentId': serializer.toJson<int?>(studentId),
       'name': serializer.toJson<String>(name),
-      'defaultRateAmount': serializer.toJson<int?>(defaultRateAmount),
+      'defaultRateAmount': serializer.toJson<int>(defaultRateAmount),
       'isActive': serializer.toJson<bool>(isActive),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -1123,7 +1120,7 @@ class Subject extends DataClass implements Insertable<Subject> {
     int? id,
     Value<int?> studentId = const Value.absent(),
     String? name,
-    Value<int?> defaultRateAmount = const Value.absent(),
+    int? defaultRateAmount,
     bool? isActive,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -1131,9 +1128,7 @@ class Subject extends DataClass implements Insertable<Subject> {
     id: id ?? this.id,
     studentId: studentId.present ? studentId.value : this.studentId,
     name: name ?? this.name,
-    defaultRateAmount: defaultRateAmount.present
-        ? defaultRateAmount.value
-        : this.defaultRateAmount,
+    defaultRateAmount: defaultRateAmount ?? this.defaultRateAmount,
     isActive: isActive ?? this.isActive,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -1193,7 +1188,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
   final Value<int> id;
   final Value<int?> studentId;
   final Value<String> name;
-  final Value<int?> defaultRateAmount;
+  final Value<int> defaultRateAmount;
   final Value<bool> isActive;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -1239,7 +1234,7 @@ class SubjectsCompanion extends UpdateCompanion<Subject> {
     Value<int>? id,
     Value<int?>? studentId,
     Value<String>? name,
-    Value<int?>? defaultRateAmount,
+    Value<int>? defaultRateAmount,
     Value<bool>? isActive,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -5550,7 +5545,7 @@ typedef $$SubjectsTableCreateCompanionBuilder =
       Value<int> id,
       Value<int?> studentId,
       required String name,
-      Value<int?> defaultRateAmount,
+      Value<int> defaultRateAmount,
       Value<bool> isActive,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -5560,7 +5555,7 @@ typedef $$SubjectsTableUpdateCompanionBuilder =
       Value<int> id,
       Value<int?> studentId,
       Value<String> name,
-      Value<int?> defaultRateAmount,
+      Value<int> defaultRateAmount,
       Value<bool> isActive,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -5939,7 +5934,7 @@ class $$SubjectsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int?> studentId = const Value.absent(),
                 Value<String> name = const Value.absent(),
-                Value<int?> defaultRateAmount = const Value.absent(),
+                Value<int> defaultRateAmount = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -5957,7 +5952,7 @@ class $$SubjectsTableTableManager
                 Value<int> id = const Value.absent(),
                 Value<int?> studentId = const Value.absent(),
                 required String name,
-                Value<int?> defaultRateAmount = const Value.absent(),
+                Value<int> defaultRateAmount = const Value.absent(),
                 Value<bool> isActive = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),

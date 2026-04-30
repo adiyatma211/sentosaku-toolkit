@@ -40,7 +40,7 @@ class SubjectRepository {
     final logData = {
       'studentId': studentId,
       'name': trimmedName,
-      'defaultRateAmount': defaultRateAmount,
+      'defaultRateAmount': defaultRateAmount ?? 0,
     };
     _logger.logTransactionStart(action, logData);
     try {
@@ -76,7 +76,7 @@ class SubjectRepository {
             SubjectsCompanion.insert(
               studentId: Value(studentId),
               name: trimmedName,
-              defaultRateAmount: Value(defaultRateAmount),
+              defaultRateAmount: Value(defaultRateAmount ?? 0),
               createdAt: Value(now),
               updatedAt: Value(now),
             ),

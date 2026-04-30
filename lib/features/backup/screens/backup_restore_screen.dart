@@ -2,6 +2,7 @@ import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../core/feedback/app_toast.dart';
 import '../../../core/navigation/app_back_scope.dart';
 import '../providers/backup_provider.dart';
 import '../widgets/backup_history_tile.dart';
@@ -142,14 +143,14 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
           .read(backupNotifierProvider.notifier)
           .createBackup();
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Backup berhasil: ${backup.filePath}')),
+      AppToast.success(
+        context,
+        'Backup berhasil disimpan',
+        details: backup.filePath,
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Backup gagal: $error')));
+      AppToast.error(context, 'Backup gagal', details: '$error');
     }
   }
 
@@ -189,16 +190,14 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
     try {
       await ref.read(restoreNotifierProvider.notifier).restore(path);
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Restore berhasil. Data akan dimuat ulang otomatis.'),
-        ),
+      AppToast.success(
+        context,
+        'Restore berhasil',
+        details: 'Data akan dimuat ulang otomatis.',
       );
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('Restore gagal: $error')));
+      AppToast.error(context, 'Restore gagal', details: '$error');
     }
   }
 }

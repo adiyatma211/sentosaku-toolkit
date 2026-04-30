@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/feedback/app_toast.dart';
 import '../../../core/navigation/app_back_scope.dart';
 import '../data/schedule_repository.dart';
 import '../providers/schedule_provider.dart';
@@ -90,8 +91,10 @@ class ScheduleDetailScreen extends ConsumerWidget {
 
     final state = ref.read(scheduleFormNotifierProvider);
     if (state.hasError) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal membatalkan jadwal: ${state.error}')),
+      AppToast.error(
+        context,
+        'Gagal membatalkan jadwal',
+        details: '${state.error}',
       );
       return;
     }
@@ -114,74 +117,119 @@ class _ScheduleDetailContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final dateFormat = DateFormat('d MMMM yyyy');
+    final dateFormat = DateFormat('EEEE, d MMMM yyyy', 'id_ID');
     final timeFormat = DateFormat.Hm();
     final schedule = detail.schedule;
+    final timeText =
+        '${timeFormat.format(schedule.startTime)} - ${timeFormat.format(schedule.endTime)}';
+    final address = detail.student.address?.trim();
+    final locationText = address == null || address.isEmpty
+        ? 'Lokasi belum diisi'
+        : address;
+    final note = schedule.note?.trim();
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        detail.student.name,
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                    ),
-                    ScheduleStatusChip(status: schedule.status),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _InfoRow(label: 'Mata pelajaran', value: detail.subject.name),
-                _InfoRow(
-                  label: 'Tanggal',
-                  value: dateFormat.format(schedule.date),
-                ),
-                _InfoRow(
-                  label: 'Waktu',
-                  value:
-                      '${timeFormat.format(schedule.startTime)} - ${timeFormat.format(schedule.endTime)}',
-                ),
-                _InfoRow(
-                  label: 'Tipe',
-                  value: _typeLabel(schedule.scheduleType),
-                ),
-                _InfoRow(
-                  label: 'Reminder',
-                  value: schedule.reminderEnabled ? 'Aktif' : 'Tidak aktif',
-                ),
-                _InfoRow(label: 'Catatan', value: schedule.note),
-              ],
-            ),
-          ),
+        _DetailHeader(
+          studentName: detail.student.name,
+          subjectName: detail.subject.name,
+          status: schedule.status,
+          dateText: dateFormat.format(schedule.date),
+          timeText: timeText,
         ),
         const SizedBox(height: 16),
-        FilledButton.icon(
-          onPressed: _canCreateSession(schedule.status)
-              ? onCreateSession
-              : null,
-          icon: const Icon(Icons.fact_check_outlined),
-          label: const Text('Tandai selesai / Buat sesi'),
+        _DetailSection(
+          title: 'Waktu & Lokasi',
+          icon: Icons.schedule_outlined,
+          children: [
+            _DetailInfoTile(
+              icon: Icons.calendar_today_outlined,
+              label: 'Tanggal',
+              value: dateFormat.format(schedule.date),
+            ),
+            _DetailInfoTile(
+              icon: Icons.access_time_outlined,
+              label: 'Waktu les',
+              value: timeText,
+            ),
+            _DetailInfoTile(
+              icon: Icons.place_outlined,
+              label: 'Lokasi',
+              value: locationText,
+            ),
+          ],
         ),
-        const SizedBox(height: 8),
-        FilledButton.tonalIcon(
-          onPressed: schedule.status == ScheduleStatus.cancelled || isSubmitting
-              ? null
-              : onCancel,
-          icon: isSubmitting
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.event_busy_outlined),
-          label: const Text('Batalkan jadwal'),
+        const SizedBox(height: 16),
+        _DetailSection(
+          title: 'Detail Jadwal',
+          icon: Icons.event_note_outlined,
+          children: [
+            _DetailInfoTile(
+              icon: Icons.person_outline_rounded,
+              label: 'Murid',
+              value: detail.student.name,
+            ),
+            _DetailInfoTile(
+              icon: Icons.menu_book_outlined,
+              label: 'Mata pelajaran',
+              value: detail.subject.name,
+            ),
+            _DetailInfoTile(
+              icon: Icons.event_repeat_outlined,
+              label: 'Tipe jadwal',
+              value: _typeLabel(schedule.scheduleType),
+            ),
+            _DetailInfoTile(
+              icon: schedule.reminderEnabled
+                  ? Icons.notifications_active_outlined
+                  : Icons.notifications_off_outlined,
+              label: 'Reminder',
+              value: schedule.reminderEnabled ? 'Aktif' : 'Tidak aktif',
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _DetailSection(
+          title: 'Catatan',
+          icon: Icons.sticky_note_2_outlined,
+          children: [
+            Text(
+              note == null || note.isEmpty ? 'Belum ada catatan.' : note,
+              style: Theme.of(context).textTheme.bodyMedium,
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.icon(
+            onPressed: _canCreateSession(schedule.status)
+                ? onCreateSession
+                : null,
+            icon: const Icon(Icons.fact_check_outlined),
+            label: const Text('Tandai selesai / Buat sesi'),
+          ),
+        ),
+        const SizedBox(height: 10),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.tonalIcon(
+            onPressed:
+                schedule.status == ScheduleStatus.cancelled || isSubmitting
+                ? null
+                : onCancel,
+            style: FilledButton.styleFrom(
+              foregroundColor: Theme.of(context).colorScheme.error,
+            ),
+            icon: isSubmitting
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.event_busy_outlined),
+            label: const Text('Batalkan jadwal'),
+          ),
         ),
       ],
     );
@@ -203,24 +251,233 @@ class _ScheduleDetailContent extends StatelessWidget {
   }
 }
 
-class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+class _DetailHeader extends StatelessWidget {
+  const _DetailHeader({
+    required this.studentName,
+    required this.subjectName,
+    required this.status,
+    required this.dateText,
+    required this.timeText,
+  });
 
-  final String label;
-  final String? value;
+  final String studentName;
+  final String subjectName;
+  final String status;
+  final String dateText;
+  final String timeText;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(28),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [colorScheme.primary, colorScheme.secondary],
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: colorScheme.primary.withValues(alpha: .18),
+            blurRadius: 22,
+            offset: const Offset(0, 12),
+          ),
+        ],
+      ),
+      child: Stack(
+        children: [
+          Positioned(
+            right: -24,
+            top: -34,
+            child: Icon(
+              Icons.event_available_rounded,
+              size: 126,
+              color: Colors.white.withValues(alpha: .12),
+            ),
+          ),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          studentName,
+                          style: Theme.of(context).textTheme.headlineSmall
+                              ?.copyWith(
+                                color: Colors.white,
+                                fontWeight: FontWeight.w900,
+                              ),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          subjectName,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                color: Colors.white.withValues(alpha: .88),
+                                fontWeight: FontWeight.w700,
+                              ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  ScheduleStatusChip(status: status),
+                ],
+              ),
+              const SizedBox(height: 22),
+              Text(
+                timeText,
+                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w900,
+                ),
+              ),
+              const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: .18),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(
+                      Icons.calendar_today_outlined,
+                      size: 16,
+                      color: Colors.white,
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        dateText,
+                        style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                          color: Colors.white,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _DetailSection extends StatelessWidget {
+  const _DetailSection({
+    required this.title,
+    required this.icon,
+    required this.children,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: colorScheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            ...children,
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _DetailInfoTile extends StatelessWidget {
+  const _DetailInfoTile({
+    required this.icon,
+    required this.label,
+    required this.value,
+  });
+
+  final IconData icon;
+  final String label;
+  final String? value;
+
+  String get _resolvedValue {
+    final text = value?.trim();
+    return text == null || text.isEmpty ? '-' : text;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 6),
+      padding: const EdgeInsets.only(bottom: 12),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          SizedBox(
-            width: 120,
-            child: Text(label, style: Theme.of(context).textTheme.labelLarge),
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: colorScheme.primary.withValues(alpha: .1),
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Icon(icon, size: 19, color: colorScheme.primary),
           ),
-          Expanded(child: Text(value == null || value!.isEmpty ? '-' : value!)),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  label,
+                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                    color: colorScheme.onSurfaceVariant,
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  _resolvedValue,
+                  style: Theme.of(
+                    context,
+                  ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+                ),
+              ],
+            ),
+          ),
         ],
       ),
     );

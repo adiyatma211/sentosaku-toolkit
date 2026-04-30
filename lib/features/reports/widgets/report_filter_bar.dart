@@ -14,43 +14,109 @@ class ReportFilterBar extends ConsumerWidget {
     final notifier = ref.read(reportFilterProvider.notifier);
     final dateFormat = DateFormat('dd MMM yyyy', 'id_ID');
     final endInclusive = filter.endDate.subtract(const Duration(days: 1));
+    final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
+      clipBehavior: Clip.antiAlias,
       child: Padding(
-        padding: const EdgeInsets.all(12),
+        padding: const EdgeInsets.all(16),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(9),
+                  decoration: BoxDecoration(
+                    color: colorScheme.primary.withValues(alpha: .12),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(
+                    Icons.tune_rounded,
+                    size: 20,
+                    color: colorScheme.primary,
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        'Periode laporan',
+                        style: Theme.of(context).textTheme.titleMedium
+                            ?.copyWith(fontWeight: FontWeight.w900),
+                      ),
+                      Text(
+                        'Pilih rentang data yang ingin ditampilkan.',
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
             Wrap(
               spacing: 8,
               runSpacing: 8,
               children: [
                 ChoiceChip(
+                  avatar: const Icon(Icons.today_rounded, size: 18),
                   label: const Text('Hari ini'),
                   selected: filter.filterType == ReportFilterType.today,
                   onSelected: (_) => notifier.setToday(),
                 ),
                 ChoiceChip(
+                  avatar: const Icon(Icons.view_week_rounded, size: 18),
                   label: const Text('Minggu ini'),
                   selected: filter.filterType == ReportFilterType.week,
                   onSelected: (_) => notifier.setThisWeek(),
                 ),
                 ChoiceChip(
+                  avatar: const Icon(Icons.calendar_month_rounded, size: 18),
                   label: const Text('Bulan ini'),
                   selected: filter.filterType == ReportFilterType.month,
                   onSelected: (_) => notifier.setThisMonth(),
                 ),
                 ActionChip(
-                  avatar: const Icon(Icons.date_range),
+                  avatar: const Icon(Icons.date_range_rounded, size: 18),
                   label: const Text('Custom'),
                   onPressed: () => _pickCustomRange(context, ref, filter),
                 ),
               ],
             ),
-            const SizedBox(height: 8),
-            Text(
-              '${dateFormat.format(filter.startDate)} - ${dateFormat.format(endInclusive)}',
-              style: Theme.of(context).textTheme.bodySmall,
+            const SizedBox(height: 14),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: colorScheme.surfaceContainerHighest.withValues(
+                  alpha: .55,
+                ),
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: colorScheme.outlineVariant),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.event_note_rounded,
+                    size: 18,
+                    color: colorScheme.primary,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      '${dateFormat.format(filter.startDate)} - ${dateFormat.format(endInclusive)}',
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         ),

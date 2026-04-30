@@ -6,7 +6,7 @@ class Subjects extends Table {
   IntColumn get id => integer().autoIncrement()();
   IntColumn get studentId => integer().nullable().references(Students, #id)();
   TextColumn get name => text()();
-  IntColumn get defaultRateAmount => integer().nullable()();
+  IntColumn get defaultRateAmount => integer().withDefault(const Constant(0))();
   BoolColumn get isActive => boolean().withDefault(const Constant(true))();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();

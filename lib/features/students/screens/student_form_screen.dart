@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/database/app_database.dart';
+import '../../../core/feedback/app_toast.dart';
 import '../../../core/navigation/app_back_scope.dart';
 import '../data/student_repository.dart';
 import '../providers/student_provider.dart';
@@ -99,132 +100,195 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
         body: Form(
           key: _formKey,
           child: ListView(
-            padding: const EdgeInsets.all(16),
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
             children: [
-              TextFormField(
-                controller: _nameController,
-                decoration: const InputDecoration(labelText: 'Nama siswa *'),
-                textInputAction: TextInputAction.next,
-                validator: _required('Nama siswa wajib diisi'),
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _parentNameController,
-                decoration: const InputDecoration(
-                  labelText: 'Nama orang tua/wali',
-                ),
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _whatsappController,
-                decoration: const InputDecoration(labelText: 'WhatsApp'),
-                keyboardType: TextInputType.phone,
-                textInputAction: TextInputAction.next,
-                validator: _validateWhatsapp,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _addressController,
-                decoration: const InputDecoration(labelText: 'Alamat'),
-                maxLines: 2,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _schoolController,
-                decoration: const InputDecoration(labelText: 'Sekolah'),
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _gradeController,
-                decoration: const InputDecoration(labelText: 'Kelas'),
-                textInputAction: TextInputAction.next,
-              ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _defaultSubjectController,
-                decoration: const InputDecoration(
-                  labelText: 'Mata pelajaran utama *',
-                ),
-                textInputAction: TextInputAction.next,
-                validator: _required('Mata pelajaran utama wajib diisi'),
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _rateType,
-                decoration: const InputDecoration(labelText: 'Tipe tarif *'),
-                items: const [
-                  DropdownMenuItem(
-                    value: RateType.perSession,
-                    child: Text('Per sesi'),
+              _FormIntroCard(isEdit: widget.isEdit),
+              const SizedBox(height: 16),
+              _FormSection(
+                title: 'Data Murid',
+                icon: Icons.school_outlined,
+                children: [
+                  TextFormField(
+                    controller: _nameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nama siswa *',
+                      prefixIcon: Icon(Icons.person_outline),
+                    ),
+                    textInputAction: TextInputAction.next,
+                    validator: _required('Nama siswa wajib diisi'),
                   ),
-                  DropdownMenuItem(
-                    value: RateType.monthly,
-                    child: Text('Bulanan'),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _schoolController,
+                    decoration: const InputDecoration(
+                      labelText: 'Sekolah',
+                      prefixIcon: Icon(Icons.apartment_outlined),
+                    ),
+                    textInputAction: TextInputAction.next,
                   ),
-                  DropdownMenuItem(
-                    value: RateType.package,
-                    child: Text('Paket'),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _gradeController,
+                    decoration: const InputDecoration(
+                      labelText: 'Kelas',
+                      prefixIcon: Icon(Icons.badge_outlined),
+                    ),
+                    textInputAction: TextInputAction.next,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _defaultSubjectController,
+                    decoration: const InputDecoration(
+                      labelText: 'Mata pelajaran utama *',
+                      prefixIcon: Icon(Icons.menu_book_outlined),
+                    ),
+                    textInputAction: TextInputAction.next,
+                    validator: _required('Mata pelajaran utama wajib diisi'),
                   ),
                 ],
-                onChanged: isSubmitting
-                    ? null
-                    : (value) => setState(
-                        () => _rateType = value ?? RateType.perSession,
-                      ),
-                validator: (value) =>
-                    value == null ? 'Tipe tarif wajib dipilih' : null,
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _rateAmountController,
-                decoration: const InputDecoration(labelText: 'Nominal tarif *'),
-                keyboardType: TextInputType.number,
-                textInputAction: TextInputAction.next,
-                validator: _validateRateAmount,
-              ),
-              const SizedBox(height: 12),
-              DropdownButtonFormField<String>(
-                value: _status,
-                decoration: const InputDecoration(labelText: 'Status'),
-                items: const [
-                  DropdownMenuItem(
-                    value: StudentStatus.active,
-                    child: Text('Aktif'),
+              const SizedBox(height: 16),
+              _FormSection(
+                title: 'Kontak & Lokasi',
+                icon: Icons.contact_phone_outlined,
+                children: [
+                  TextFormField(
+                    controller: _parentNameController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nama orang tua/wali',
+                      prefixIcon: Icon(Icons.family_restroom_outlined),
+                    ),
+                    textInputAction: TextInputAction.next,
                   ),
-                  DropdownMenuItem(
-                    value: StudentStatus.pending,
-                    child: Text('Pending'),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _whatsappController,
+                    decoration: const InputDecoration(
+                      labelText: 'WhatsApp',
+                      prefixIcon: Icon(Icons.chat_outlined),
+                    ),
+                    keyboardType: TextInputType.phone,
+                    textInputAction: TextInputAction.next,
+                    validator: _validateWhatsapp,
                   ),
-                  DropdownMenuItem(
-                    value: StudentStatus.inactive,
-                    child: Text('Nonaktif'),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _addressController,
+                    decoration: const InputDecoration(
+                      labelText: 'Alamat',
+                      prefixIcon: Icon(Icons.location_on_outlined),
+                    ),
+                    maxLines: 2,
                   ),
                 ],
-                onChanged: isSubmitting
-                    ? null
-                    : (value) => setState(
-                        () => _status = value ?? StudentStatus.active,
+              ),
+              const SizedBox(height: 16),
+              _FormSection(
+                title: 'Tarif & Status',
+                icon: Icons.payments_outlined,
+                children: [
+                  DropdownButtonFormField<String>(
+                    value: _rateType,
+                    decoration: const InputDecoration(
+                      labelText: 'Tipe tarif *',
+                      prefixIcon: Icon(Icons.sell_outlined),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: RateType.perSession,
+                        child: Text('Per sesi'),
                       ),
+                      DropdownMenuItem(
+                        value: RateType.monthly,
+                        child: Text('Bulanan'),
+                      ),
+                      DropdownMenuItem(
+                        value: RateType.package,
+                        child: Text('Paket'),
+                      ),
+                    ],
+                    onChanged: isSubmitting
+                        ? null
+                        : (value) => setState(
+                            () => _rateType = value ?? RateType.perSession,
+                          ),
+                    validator: (value) =>
+                        value == null ? 'Tipe tarif wajib dipilih' : null,
+                  ),
+                  const SizedBox(height: 12),
+                  TextFormField(
+                    controller: _rateAmountController,
+                    decoration: const InputDecoration(
+                      labelText: 'Nominal tarif *',
+                      prefixIcon: Icon(Icons.attach_money_outlined),
+                    ),
+                    keyboardType: TextInputType.number,
+                    textInputAction: TextInputAction.next,
+                    validator: _validateRateAmount,
+                  ),
+                  const SizedBox(height: 12),
+                  DropdownButtonFormField<String>(
+                    value: _status,
+                    decoration: const InputDecoration(
+                      labelText: 'Status',
+                      prefixIcon: Icon(Icons.verified_user_outlined),
+                    ),
+                    items: const [
+                      DropdownMenuItem(
+                        value: StudentStatus.active,
+                        child: Text('Aktif'),
+                      ),
+                      DropdownMenuItem(
+                        value: StudentStatus.pending,
+                        child: Text('Pending'),
+                      ),
+                      DropdownMenuItem(
+                        value: StudentStatus.inactive,
+                        child: Text('Nonaktif'),
+                      ),
+                    ],
+                    onChanged: isSubmitting
+                        ? null
+                        : (value) => setState(
+                            () => _status = value ?? StudentStatus.active,
+                          ),
+                  ),
+                ],
               ),
-              const SizedBox(height: 12),
-              TextFormField(
-                controller: _noteController,
-                decoration: const InputDecoration(labelText: 'Catatan'),
-                maxLines: 3,
+              const SizedBox(height: 16),
+              _FormSection(
+                title: 'Catatan',
+                icon: Icons.notes_outlined,
+                children: [
+                  TextFormField(
+                    controller: _noteController,
+                    decoration: const InputDecoration(
+                      labelText: 'Catatan',
+                      prefixIcon: Icon(Icons.sticky_note_2_outlined),
+                    ),
+                    maxLines: 3,
+                  ),
+                ],
               ),
-              const SizedBox(height: 24),
-              FilledButton.icon(
-                onPressed: isSubmitting ? null : _submit,
-                icon: isSubmitting
-                    ? const SizedBox.square(
-                        dimension: 18,
-                        child: CircularProgressIndicator(strokeWidth: 2),
-                      )
-                    : const Icon(Icons.save_outlined),
-                label: Text(
-                  widget.isEdit ? 'Simpan perubahan' : 'Tambah siswa',
+              const SizedBox(height: 20),
+              SizedBox(
+                width: double.infinity,
+                child: FilledButton.icon(
+                  style: FilledButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(vertical: 18),
+                    textStyle: Theme.of(context).textTheme.titleMedium
+                        ?.copyWith(fontWeight: FontWeight.w700),
+                  ),
+                  onPressed: isSubmitting ? null : _submit,
+                  icon: isSubmitting
+                      ? const SizedBox.square(
+                          dimension: 18,
+                          child: CircularProgressIndicator(strokeWidth: 2),
+                        )
+                      : const Icon(Icons.save_outlined),
+                  label: Text(
+                    widget.isEdit ? 'Simpan perubahan' : 'Tambah siswa',
+                  ),
                 ),
               ),
             ],
@@ -299,8 +363,10 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
   void _showSubmitResult({required VoidCallback onSuccess}) {
     final state = ref.read(studentFormNotifierProvider);
     if (state.hasError) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menyimpan siswa: ${state.error}')),
+      AppToast.error(
+        context,
+        'Gagal menyimpan siswa',
+        details: '${state.error}',
       );
       return;
     }
@@ -326,5 +392,110 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
       return 'Nominal tarif harus lebih dari 0';
     }
     return null;
+  }
+}
+
+class _FormIntroCard extends StatelessWidget {
+  const _FormIntroCard({required this.isEdit});
+
+  final bool isEdit;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      color: colorScheme.primaryContainer.withValues(alpha: .72),
+      child: Padding(
+        padding: const EdgeInsets.all(20),
+        child: Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: colorScheme.primary.withValues(alpha: .12),
+                borderRadius: BorderRadius.circular(18),
+              ),
+              child: Icon(
+                Icons.person_add_alt_1_outlined,
+                color: colorScheme.primary,
+              ),
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Profil Siswa',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: colorScheme.onPrimaryContainer,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    isEdit
+                        ? 'Perbarui data murid, kontak, tarif, dan status dengan rapi.'
+                        : 'Lengkapi profil murid agar jadwal dan pembayaran lebih mudah dicatat.',
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: colorScheme.onPrimaryContainer.withValues(
+                        alpha: .78,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _FormSection extends StatelessWidget {
+  const _FormSection({
+    required this.title,
+    required this.icon,
+    required this.children,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: colorScheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: colorScheme.onSurface,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+            ...children,
+          ],
+        ),
+      ),
+    );
   }
 }

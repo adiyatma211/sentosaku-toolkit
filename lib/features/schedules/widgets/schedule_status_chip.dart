@@ -9,12 +9,13 @@ class ScheduleStatusChip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
     final (label, color) = switch (status) {
       ScheduleStatus.done => ('Selesai', Colors.green),
-      ScheduleStatus.cancelled => ('Batal', Colors.red),
-      ScheduleStatus.rescheduled => ('Reschedule', Colors.blue),
+      ScheduleStatus.cancelled => ('Batal', colorScheme.error),
+      ScheduleStatus.rescheduled => ('Reschedule', colorScheme.tertiary),
       ScheduleStatus.noShow => ('No show', Colors.orange),
-      _ => ('Terjadwal', Colors.teal),
+      _ => ('Terjadwal', colorScheme.primary),
     };
 
     return Chip(
@@ -22,7 +23,7 @@ class ScheduleStatusChip extends StatelessWidget {
       visualDensity: VisualDensity.compact,
       backgroundColor: color.withValues(alpha: 0.12),
       side: BorderSide(color: color.withValues(alpha: 0.4)),
-      labelStyle: TextStyle(color: color.shade700),
+      labelStyle: TextStyle(color: color, fontWeight: FontWeight.w700),
     );
   }
 }

@@ -3,7 +3,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/constants/app_constants.dart';
 import '../../../core/database/app_database.dart';
+import '../../../core/feedback/app_toast.dart';
 import '../../../core/navigation/app_back_scope.dart';
 import '../providers/student_provider.dart';
 import '../widgets/student_status_chip.dart';
@@ -85,8 +87,10 @@ class StudentDetailScreen extends ConsumerWidget {
 
     final state = ref.read(studentFormNotifierProvider);
     if (state.hasError) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal menonaktifkan siswa: ${state.error}')),
+      AppToast.error(
+        context,
+        'Gagal menonaktifkan siswa',
+        details: '${state.error}',
       );
       return;
     }
@@ -115,94 +119,308 @@ class _StudentDetailContent extends StatelessWidget {
     );
 
     return ListView(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.fromLTRB(16, 12, 16, 28),
       children: [
-        Card(
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    Expanded(
-                      child: Text(
-                        student.name,
-                        style: Theme.of(context).textTheme.headlineSmall,
-                      ),
-                    ),
-                    StudentStatusChip(status: student.status),
-                  ],
-                ),
-                const SizedBox(height: 16),
-                _InfoRow(label: 'Orang tua', value: student.parentName),
-                _InfoRow(label: 'WhatsApp', value: student.whatsapp),
-                _InfoRow(label: 'Alamat', value: student.address),
-                _InfoRow(label: 'Sekolah', value: student.school),
-                _InfoRow(label: 'Kelas', value: student.grade),
-                _InfoRow(
-                  label: 'Mata pelajaran',
-                  value: student.defaultSubject,
-                ),
-                _InfoRow(
-                  label: 'Tipe tarif',
-                  value: _rateTypeLabel(student.rateType),
-                ),
-                _InfoRow(
-                  label: 'Tarif',
-                  value: currencyFormat.format(student.rateAmount),
-                ),
-                _InfoRow(label: 'Catatan', value: student.note),
-              ],
+        _ProfileHeaderCard(student: student, currencyFormat: currencyFormat),
+        const SizedBox(height: 16),
+        _InfoSection(
+          title: 'Kontak & Lokasi',
+          icon: Icons.contact_phone_outlined,
+          rows: [
+            _InfoItem(
+              Icons.family_restroom_outlined,
+              'Orang tua',
+              student.parentName,
             ),
-          ),
+            _InfoItem(Icons.chat_outlined, 'WhatsApp', student.whatsapp),
+            _InfoItem(Icons.location_on_outlined, 'Alamat', student.address),
+          ],
         ),
         const SizedBox(height: 16),
-        FilledButton.tonalIcon(
-          onPressed: student.status == 'inactive' || isSubmitting
-              ? null
-              : onDeactivate,
-          icon: isSubmitting
-              ? const SizedBox.square(
-                  dimension: 18,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                )
-              : const Icon(Icons.person_off_outlined),
-          label: const Text('Nonaktifkan siswa'),
+        _InfoSection(
+          title: 'Akademik',
+          icon: Icons.school_outlined,
+          rows: [
+            _InfoItem(Icons.apartment_outlined, 'Sekolah', student.school),
+            _InfoItem(Icons.badge_outlined, 'Kelas', student.grade),
+            _InfoItem(
+              Icons.menu_book_outlined,
+              'Mata pelajaran',
+              student.defaultSubject,
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _InfoSection(
+          title: 'Pembayaran',
+          icon: Icons.payments_outlined,
+          rows: [
+            _InfoItem(
+              Icons.sell_outlined,
+              'Tipe tarif',
+              _rateTypeLabel(student.rateType),
+            ),
+            _InfoItem(
+              Icons.attach_money_outlined,
+              'Tarif',
+              currencyFormat.format(student.rateAmount),
+            ),
+          ],
+        ),
+        const SizedBox(height: 16),
+        _InfoSection(
+          title: 'Catatan',
+          icon: Icons.notes_outlined,
+          rows: [
+            _InfoItem(Icons.sticky_note_2_outlined, 'Catatan', student.note),
+          ],
+        ),
+        const SizedBox(height: 20),
+        SizedBox(
+          width: double.infinity,
+          child: FilledButton.tonalIcon(
+            style: FilledButton.styleFrom(
+              padding: const EdgeInsets.symmetric(vertical: 16),
+            ),
+            onPressed: student.status == StudentStatus.inactive || isSubmitting
+                ? null
+                : onDeactivate,
+            icon: isSubmitting
+                ? const SizedBox.square(
+                    dimension: 18,
+                    child: CircularProgressIndicator(strokeWidth: 2),
+                  )
+                : const Icon(Icons.person_off_outlined),
+            label: const Text('Nonaktifkan siswa'),
+          ),
         ),
       ],
     );
   }
+}
 
-  String _rateTypeLabel(String value) {
-    return switch (value) {
-      'monthly' => 'Bulanan',
-      'package' => 'Paket',
-      _ => 'Per sesi',
-    };
+class _ProfileHeaderCard extends StatelessWidget {
+  const _ProfileHeaderCard({
+    required this.student,
+    required this.currencyFormat,
+  });
+
+  final Student student;
+  final NumberFormat currencyFormat;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      color: colorScheme.primaryContainer.withValues(alpha: .72),
+      child: Padding(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                CircleAvatar(
+                  radius: 28,
+                  backgroundColor: colorScheme.primary,
+                  foregroundColor: colorScheme.onPrimary,
+                  child: Text(
+                    _initial(student.name),
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      color: colorScheme.onPrimary,
+                      fontWeight: FontWeight.w900,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        student.name,
+                        style: Theme.of(context).textTheme.headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.w900,
+                              color: colorScheme.onPrimaryContainer,
+                            ),
+                      ),
+                      const SizedBox(height: 6),
+                      StudentStatusChip(status: student.status),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Wrap(
+              spacing: 10,
+              runSpacing: 10,
+              children: [
+                _HeaderPill(
+                  icon: Icons.menu_book_outlined,
+                  label: _fallback(student.defaultSubject),
+                ),
+                _HeaderPill(
+                  icon: Icons.payments_outlined,
+                  label:
+                      '${_rateTypeLabel(student.rateType)} • ${currencyFormat.format(student.rateAmount)}',
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _HeaderPill extends StatelessWidget {
+  const _HeaderPill({required this.icon, required this.label});
+
+  final IconData icon;
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: colorScheme.surface.withValues(alpha: .82),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(icon, size: 16, color: colorScheme.primary),
+          const SizedBox(width: 6),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: colorScheme.onSurface,
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InfoSection extends StatelessWidget {
+  const _InfoSection({
+    required this.title,
+    required this.icon,
+    required this.rows,
+  });
+
+  final String title;
+  final IconData icon;
+  final List<_InfoItem> rows;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Icon(icon, color: colorScheme.primary),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ...rows.map((row) => _InfoRow(item: row)),
+          ],
+        ),
+      ),
+    );
   }
 }
 
 class _InfoRow extends StatelessWidget {
-  const _InfoRow({required this.label, required this.value});
+  const _InfoRow({required this.item});
 
-  final String label;
-  final String? value;
+  final _InfoItem item;
 
   @override
   Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 6),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          Icon(item.icon, size: 18, color: colorScheme.onSurfaceVariant),
+          const SizedBox(width: 10),
           SizedBox(
-            width: 130,
-            child: Text(label, style: Theme.of(context).textTheme.labelLarge),
+            width: 102,
+            child: Text(
+              item.label,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ),
           ),
-          Expanded(child: Text(value == null || value!.isEmpty ? '-' : value!)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _fallback(item.value),
+              style: Theme.of(
+                context,
+              ).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w600),
+            ),
+          ),
         ],
       ),
     );
   }
+}
+
+class _InfoItem {
+  const _InfoItem(this.icon, this.label, this.value);
+
+  final IconData icon;
+  final String label;
+  final String? value;
+}
+
+String _initial(String name) {
+  final trimmed = name.trim();
+  return trimmed.isEmpty ? '?' : trimmed.substring(0, 1).toUpperCase();
+}
+
+String _fallback(String? value) {
+  final trimmed = value?.trim() ?? '';
+  return trimmed.isEmpty ? '-' : trimmed;
+}
+
+String _rateTypeLabel(String value) {
+  return switch (value) {
+    RateType.monthly => 'Bulanan',
+    RateType.package => 'Paket',
+    _ => 'Per sesi',
+  };
 }

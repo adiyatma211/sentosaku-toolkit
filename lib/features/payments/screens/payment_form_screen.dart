@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/feedback/app_toast.dart';
 import '../../../core/navigation/app_back_scope.dart';
 import '../data/payment_repository.dart';
 import '../providers/payment_provider.dart';
@@ -114,9 +115,7 @@ class _PaymentFormScreenState extends ConsumerState<PaymentFormScreen> {
       context.go('/payments/${detail.invoice.id}');
     } catch (error) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Gagal mencatat pembayaran: $error')),
-      );
+      AppToast.error(context, 'Gagal mencatat pembayaran', details: '$error');
     }
   }
 }

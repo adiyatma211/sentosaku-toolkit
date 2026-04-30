@@ -4,38 +4,86 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/showcase/app_showcase.dart';
+import '../../guide/providers/onboarding_provider.dart';
 import '../../schedules/data/schedule_repository.dart';
 import '../../schedules/providers/schedule_provider.dart';
 import '../../schedules/widgets/schedule_status_chip.dart';
 import '../data/dashboard_repository.dart';
 import '../providers/dashboard_provider.dart';
 
-class DashboardScreen extends ConsumerWidget {
+class DashboardScreen extends ConsumerStatefulWidget {
   const DashboardScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
+  ConsumerState<DashboardScreen> createState() => _DashboardScreenState();
+}
+
+class _DashboardScreenState extends ConsumerState<DashboardScreen> {
+  bool _hasCheckedInitialDashboardTour = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _startInitialDashboardTourIfNeeded();
+    });
+  }
+
+  Future<void> _startInitialDashboardTourIfNeeded() async {
+    if (_hasCheckedInitialDashboardTour || !mounted) return;
+    _hasCheckedInitialDashboardTour = true;
+
+    if (GoRouterState.of(context).uri.path != '/dashboard') return;
+
+    final onboardingService = ref.read(onboardingServiceProvider);
+    final shouldShow = await onboardingService.shouldShowInitialDashboardTour();
+    if (!mounted || !shouldShow) return;
+
+    await onboardingService.markInitialDashboardTourSeen();
+    if (!mounted || GoRouterState.of(context).uri.path != '/dashboard') return;
+
+    startAppShowcase(context, _dashboardShowcaseKeys);
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final summaryState = ref.watch(dashboardSummaryProvider);
     final todaySchedulesState = ref.watch(todaySchedulesProvider);
     final summary = summaryState.asData?.value;
     final colorScheme = Theme.of(context).colorScheme;
+    startRequestedShowcase(
+      context: context,
+      ref: ref,
+      tour: AppShowcaseTour.dashboard,
+      keys: _dashboardShowcaseKeys,
+    );
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Sentosaku TutorKit')),
-      floatingActionButton: _TodayAgendaFab(
-        onPressed: () => _showTodayAgendaSheet(context),
+      appBar: AppBar(
+        title: const Text('Sentosaku TutorKit'),
+        actions: [
+          IconButton(
+            tooltip: 'Mulai panduan dashboard',
+            onPressed: () => startAppShowcase(context, _dashboardShowcaseKeys),
+            icon: const Icon(Icons.help_outline_rounded),
+          ),
+        ],
       ),
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      bottomNavigationBar: const _DashboardBottomNavigation(),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(dashboardSummaryProvider.future),
         child: ListView(
           padding: const EdgeInsets.fromLTRB(16, 8, 16, 144),
           children: [
-            _HeroHeader(
-              colorScheme: colorScheme,
-              summary: summary,
-              todaySchedulesState: todaySchedulesState,
+            AppShowcaseTarget(
+              showcaseKey: AppShowcaseKeys.dashboardHero,
+              title: 'Dashboard',
+              description: 'Ini ringkasan aktivitas les Anda',
+              child: _HeroHeader(
+                colorScheme: colorScheme,
+                summary: summary,
+                todaySchedulesState: todaySchedulesState,
+              ),
             ),
             const SizedBox(height: 18),
             Row(
@@ -57,7 +105,12 @@ class DashboardScreen extends ConsumerWidget {
             summaryState.when(
               data: (summary) => Column(
                 children: [
-                  _SummaryGrid(summary: summary),
+                  AppShowcaseTarget(
+                    showcaseKey: AppShowcaseKeys.dashboardSummary,
+                    title: 'Ringkasan',
+                    description: 'Ini ringkasan aktivitas les Anda',
+                    child: _SummaryGrid(summary: summary),
+                  ),
                   const SizedBox(height: 18),
                   _ActivityChart(summary: summary),
                 ],
@@ -83,162 +136,11 @@ class DashboardScreen extends ConsumerWidget {
               ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
             ),
             const SizedBox(height: 12),
-            const _QuickActionGrid(),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showTodayAgendaSheet(BuildContext context) {
-    showModalBottomSheet<void>(
-      context: context,
-      showDragHandle: true,
-      isScrollControlled: true,
-      useSafeArea: true,
-      builder: (context) => const _TodayAgendaSheet(),
-    );
-  }
-}
-
-class _TodayAgendaFab extends StatelessWidget {
-  const _TodayAgendaFab({required this.onPressed});
-
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return SizedBox(
-      width: 72,
-      height: 78,
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          SizedBox.square(
-            dimension: 56,
-            child: FloatingActionButton(
-              tooltip: 'Absen Hari Ini',
-              onPressed: onPressed,
-              child: const Icon(Icons.add_rounded, size: 28),
-            ),
-          ),
-          const SizedBox(height: 3),
-          Text(
-            'Absen',
-            maxLines: 1,
-            overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: colorScheme.primary,
-              fontWeight: FontWeight.w800,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _DashboardBottomNavigation extends StatelessWidget {
-  const _DashboardBottomNavigation();
-
-  @override
-  Widget build(BuildContext context) {
-    return BottomAppBar(
-      shape: const CircularNotchedRectangle(),
-      notchMargin: 8,
-      height: 82,
-      padding: const EdgeInsets.symmetric(horizontal: 6),
-      child: const Row(
-        children: [
-          Expanded(
-            child: _BottomNavigationAction(
-              label: 'Dashboard',
-              path: '/dashboard',
-              icon: Icons.dashboard_outlined,
-              selectedIcon: Icons.dashboard_rounded,
-              selected: true,
-            ),
-          ),
-          Expanded(
-            child: _BottomNavigationAction(
-              label: 'Siswa',
-              path: '/students',
-              icon: Icons.groups_outlined,
-              selectedIcon: Icons.groups_rounded,
-            ),
-          ),
-          SizedBox(width: 84),
-          Expanded(
-            child: _BottomNavigationAction(
-              label: 'Jadwal',
-              path: '/schedules',
-              icon: Icons.calendar_month_outlined,
-              selectedIcon: Icons.calendar_month_rounded,
-            ),
-          ),
-          Expanded(
-            child: _BottomNavigationAction(
-              label: 'Pembayaran',
-              path: '/payments',
-              icon: Icons.payments_outlined,
-              selectedIcon: Icons.payments_rounded,
-            ),
-          ),
-          Expanded(
-            child: _BottomNavigationAction(
-              label: 'Laporan',
-              path: '/reports',
-              icon: Icons.bar_chart_outlined,
-              selectedIcon: Icons.bar_chart_rounded,
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _BottomNavigationAction extends StatelessWidget {
-  const _BottomNavigationAction({
-    required this.label,
-    required this.path,
-    required this.icon,
-    required this.selectedIcon,
-    this.selected = false,
-  });
-
-  final String label;
-  final String path;
-  final IconData icon;
-  final IconData selectedIcon;
-  final bool selected;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-    final color = selected ? colorScheme.primary : colorScheme.onSurfaceVariant;
-
-    return InkResponse(
-      onTap: () => context.go(path),
-      radius: 32,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(selected ? selectedIcon : icon, color: color),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                color: color,
-                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-              ),
+            AppShowcaseTarget(
+              showcaseKey: AppShowcaseKeys.dashboardQuickActions,
+              title: 'Akses cepat',
+              description: 'Gunakan akses cepat untuk membuka modul utama.',
+              child: const _QuickActionGrid(),
             ),
           ],
         ),
@@ -247,231 +149,16 @@ class _BottomNavigationAction extends StatelessWidget {
   }
 }
 
-class _TodayAgendaSheet extends ConsumerWidget {
-  const _TodayAgendaSheet();
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final schedulesState = ref.watch(todaySchedulesProvider);
-
-    return Padding(
-      padding: EdgeInsets.only(
-        left: 16,
-        right: 16,
-        bottom: 16 + MediaQuery.viewInsetsOf(context).bottom,
-      ),
-      child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxHeight: MediaQuery.sizeOf(context).height * .78,
-        ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    'Agenda Les Hari Ini',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w900,
-                    ),
-                  ),
-                ),
-                IconButton(
-                  tooltip: 'Tutup',
-                  onPressed: () => Navigator.of(context).pop(),
-                  icon: const Icon(Icons.close_rounded),
-                ),
-              ],
-            ),
-            const SizedBox(height: 8),
-            Flexible(
-              child: schedulesState.when(
-                data: (schedules) => schedules.isEmpty
-                    ? const _TodayAgendaEmptyState()
-                    : ListView.separated(
-                        shrinkWrap: true,
-                        itemCount: schedules.length,
-                        separatorBuilder: (context, index) =>
-                            const SizedBox(height: 10),
-                        itemBuilder: (context, index) =>
-                            _TodayAgendaTile(detail: schedules[index]),
-                      ),
-                loading: () => const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 48),
-                  child: Center(child: CircularProgressIndicator()),
-                ),
-                error: (error, stackTrace) => Padding(
-                  padding: const EdgeInsets.symmetric(vertical: 24),
-                  child: Text('Gagal memuat agenda hari ini: $error'),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TodayAgendaEmptyState extends StatelessWidget {
-  const _TodayAgendaEmptyState();
-
-  @override
-  Widget build(BuildContext context) {
-    final router = GoRouter.of(context);
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 36),
-      child: Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              Icons.event_available_outlined,
-              size: 48,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
-            const SizedBox(height: 12),
-            Text(
-              'Belum ada jadwal hari ini',
-              style: Theme.of(
-                context,
-              ).textTheme.titleMedium?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              'Tambahkan jadwal les agar agenda tampil di sini.',
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-            ),
-            const SizedBox(height: 16),
-            FilledButton.icon(
-              onPressed: () {
-                Navigator.of(context).pop();
-                router.go('/schedules/new');
-              },
-              icon: const Icon(Icons.add_rounded),
-              label: const Text('Buat Jadwal'),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _TodayAgendaTile extends StatelessWidget {
-  const _TodayAgendaTile({required this.detail});
-
-  final ScheduleDetail detail;
-
-  @override
-  Widget build(BuildContext context) {
-    final router = GoRouter.of(context);
-    final schedule = detail.schedule;
-    final canCreateSession = _canCreateSession(schedule.status);
-    final timeFormat = DateFormat.Hm();
-    final timeText =
-        '${timeFormat.format(schedule.startTime)} - ${timeFormat.format(schedule.endTime)}';
-
-    return Card(
-      clipBehavior: Clip.antiAlias,
-      child: InkWell(
-        onTap: canCreateSession
-            ? () {
-                Navigator.of(context).pop();
-                router.go('/schedules/${schedule.id}/session/new');
-              }
-            : null,
-        child: Padding(
-          padding: const EdgeInsets.all(14),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          detail.student.name,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(fontWeight: FontWeight.w900),
-                        ),
-                        const SizedBox(height: 4),
-                        Text(
-                          detail.subject.name,
-                          style: Theme.of(context).textTheme.bodyMedium
-                              ?.copyWith(
-                                color: Theme.of(
-                                  context,
-                                ).colorScheme.onSurfaceVariant,
-                              ),
-                        ),
-                      ],
-                    ),
-                  ),
-                  ScheduleStatusChip(status: schedule.status),
-                ],
-              ),
-              const SizedBox(height: 12),
-              Row(
-                children: [
-                  Icon(
-                    Icons.schedule_rounded,
-                    size: 18,
-                    color: Theme.of(context).colorScheme.primary,
-                  ),
-                  const SizedBox(width: 6),
-                  Expanded(child: Text(timeText)),
-                  const SizedBox(width: 12),
-                  FilledButton.tonalIcon(
-                    onPressed: canCreateSession
-                        ? () {
-                            Navigator.of(context).pop();
-                            router.go('/schedules/${schedule.id}/session/new');
-                          }
-                        : null,
-                    icon: Icon(
-                      canCreateSession
-                          ? Icons.fact_check_outlined
-                          : Icons.lock_outline_rounded,
-                    ),
-                    label: Text(
-                      canCreateSession
-                          ? 'Isi Absen'
-                          : _statusLabel(schedule.status),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  bool _canCreateSession(String status) {
-    return status != ScheduleStatus.done && status != ScheduleStatus.cancelled;
-  }
-
-  String _statusLabel(String status) {
-    return switch (status) {
-      ScheduleStatus.done => 'Selesai',
-      ScheduleStatus.cancelled => 'Batal',
-      ScheduleStatus.rescheduled => 'Reschedule',
-      ScheduleStatus.noShow => 'No show',
-      _ => 'Terjadwal',
-    };
-  }
-}
+final _dashboardShowcaseKeys = [
+  AppShowcaseKeys.dashboardHero,
+  AppShowcaseKeys.dashboardSummary,
+  AppShowcaseKeys.dashboardQuickActions,
+  AppShowcaseKeys.shellAttendanceFab,
+  AppShowcaseKeys.shellDashboard,
+  AppShowcaseKeys.shellStudents,
+  AppShowcaseKeys.shellSchedules,
+  AppShowcaseKeys.shellPayments,
+];
 
 class _HeroHeader extends StatelessWidget {
   const _HeroHeader({
@@ -1231,6 +918,7 @@ class _QuickActionGrid extends StatelessWidget {
     _QuickAction('Sesi', '/sessions', Icons.fact_check_rounded),
     _QuickAction('Pembayaran', '/payments', Icons.payments_rounded),
     _QuickAction('Laporan', '/reports', Icons.bar_chart_rounded),
+    _QuickAction('Panduan', '/guide', Icons.menu_book_rounded),
     _QuickAction('Backup', '/backup', Icons.cloud_sync_rounded),
   ];
 
@@ -1238,7 +926,11 @@ class _QuickActionGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (context, constraints) {
-        final columns = constraints.maxWidth >= 820 ? 6 : 3;
+        final columns = constraints.maxWidth >= 820
+            ? 4
+            : constraints.maxWidth >= 560
+            ? 4
+            : 2;
         final itemHeight = constraints.maxWidth >= 560 ? 84.0 : 78.0;
 
         return GridView.builder(
