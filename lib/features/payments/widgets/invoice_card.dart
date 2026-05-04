@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 
+import '../../../core/reminders/invoice_reminder_service.dart';
 import '../data/payment_repository.dart';
 import 'invoice_status_chip.dart';
 
@@ -19,6 +20,8 @@ class InvoiceCard extends StatelessWidget {
     );
     final invoice = detail.invoice;
     final remaining = invoice.amount - invoice.paidAmount;
+    final reminder = detail.reminderInfo;
+    final dateFormat = DateFormat('d MMM yyyy');
 
     return Card(
       child: InkWell(
@@ -45,6 +48,19 @@ class InvoiceCard extends StatelessWidget {
                 invoice.periodLabel.isEmpty
                     ? 'Invoice #${invoice.id}'
                     : invoice.periodLabel,
+              ),
+              const SizedBox(height: 6),
+              Text(
+                invoice.dueDate == null
+                    ? reminder.label
+                    : 'Jatuh tempo ${dateFormat.format(invoice.dueDate!)} • ${reminder.label}',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: reminder.stage == InvoiceReminderStage.overdue
+                      ? Colors.red.shade700
+                      : reminder.stage == InvoiceReminderStage.dueSoon
+                      ? Colors.orange.shade700
+                      : null,
+                ),
               ),
               const SizedBox(height: 12),
               Row(

@@ -5,6 +5,7 @@ import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/navigation/app_back_scope.dart';
+import '../../../core/reminders/invoice_reminder_service.dart';
 import '../data/payment_repository.dart';
 import '../providers/payment_provider.dart';
 import '../widgets/invoice_status_chip.dart';
@@ -61,6 +62,7 @@ class _InvoiceDetailContent extends ConsumerWidget {
     final canPay =
         invoice.status != InvoiceStatus.paid &&
         invoice.status != InvoiceStatus.cancelled;
+    final reminderInfo = detail.reminderInfo;
 
     return ListView(
       padding: const EdgeInsets.all(16),
@@ -109,10 +111,37 @@ class _InvoiceDetailContent extends ConsumerWidget {
                       ? '-'
                       : dateFormat.format(invoice.dueDate!),
                 ),
+                _InfoRow(label: 'Reminder', value: reminderInfo.label),
+                _InfoRow(
+                  label: 'Reminder terakhir',
+                  value: reminderInfo.lastRemindedAt == null
+                      ? '-'
+                      : dateFormat.format(reminderInfo.lastRemindedAt!),
+                ),
               ],
             ),
           ),
         ),
+        if (reminderInfo.needsFollowUp) ...[
+          const SizedBox(height: 12),
+          Card(
+            color: reminderInfo.stage == InvoiceReminderStage.overdue
+                ? Colors.red.withValues(alpha: 0.08)
+                : Colors.orange.withValues(alpha: 0.08),
+            child: ListTile(
+              leading: Icon(
+                reminderInfo.stage == InvoiceReminderStage.overdue
+                    ? Icons.warning_amber_rounded
+                    : Icons.notifications_active_outlined,
+                color: reminderInfo.stage == InvoiceReminderStage.overdue
+                    ? Colors.red.shade700
+                    : Colors.orange.shade700,
+              ),
+              title: const Text('Perlu follow-up pembayaran'),
+              subtitle: Text(reminderInfo.label),
+            ),
+          ),
+        ],
         const SizedBox(height: 16),
         FilledButton.icon(
           onPressed: canPay

@@ -24,6 +24,12 @@ void main() {
     );
   }
 
+  Finder academicPeriodDropdown() {
+    return find.byWidgetPredicate(
+      (widget) => widget is DropdownButtonFormField<int?>,
+    );
+  }
+
   testWidgets('validasi nama subject nominal dan wa', (tester) async {
     final database = TestAppDatabase();
     addTearDown(database.close);
@@ -60,12 +66,17 @@ void main() {
   testWidgets('mode edit preload data siswa', (tester) async {
     final database = TestAppDatabase();
     addTearDown(database.close);
+    final period = await seedAcademicPeriod(
+      database,
+      name: 'Semester Genap 2025/2026',
+    );
     final student = await seedStudent(
       database,
       name: 'Nadia',
       rateType: RateType.monthly,
       rateAmount: 300000,
       whatsapp: '081234567890',
+      defaultAcademicPeriodId: period.id,
     );
     await (database.update(
       database.students,
@@ -90,5 +101,40 @@ void main() {
     expect(editableTextWithValue('300000'), findsOneWidget);
     expect(editableTextWithValue('081234567890'), findsOneWidget);
     expect(editableTextWithValue('SMA 1'), findsOneWidget);
+    expect(find.text('Semester Genap 2025/2026 (aktif)'), findsOneWidget);
+  });
+
+  testWidgets('simpan default academic period jika tersedia', (tester) async {
+    final database = TestAppDatabase();
+    addTearDown(database.close);
+    final period = await seedAcademicPeriod(
+      database,
+      name: 'Semester Ganjil 2026/2027',
+    );
+
+    await pumpApp(
+      tester,
+      const StudentFormScreen(),
+      overrides: [databaseProvider.overrideWithValue(database)],
+    );
+    await tester.pumpAndSettle();
+
+    await tester.enterText(fieldByLabel('Nama siswa *'), 'Rafi');
+    await tester.enterText(fieldByLabel('Mata pelajaran utama *'), 'Biologi');
+    await tester.enterText(fieldByLabel('Nominal tarif *'), '250000');
+
+    await tester.ensureVisible(academicPeriodDropdown());
+    await tester.tap(academicPeriodDropdown());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Semester Ganjil 2026/2027 (aktif)').last);
+    await tester.pumpAndSettle();
+
+    await tester.ensureVisible(find.byIcon(Icons.save_outlined).last);
+    await tester.tap(find.byIcon(Icons.save_outlined).last);
+    await tester.pumpAndSettle();
+
+    final students = await database.select(database.students).get();
+    expect(students, hasLength(1));
+    expect(students.single.defaultAcademicPeriodId, period.id);
   });
 }

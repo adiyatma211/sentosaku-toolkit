@@ -2,12 +2,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../core/database/database_provider.dart';
 import '../../../core/logging/logger_provider.dart';
+import '../../../core/reminders/invoice_reminder_service.dart';
 import '../data/session_repository.dart';
 
 final sessionRepositoryProvider = Provider<SessionRepository>((ref) {
   return SessionRepository(
     ref.watch(databaseProvider),
     ref.watch(appLoggerProvider),
+    invoiceReminderService: InvoiceReminderService(
+      ref.watch(databaseProvider),
+      ref.watch(appLoggerProvider),
+    ),
   );
 });
 
@@ -28,6 +33,16 @@ final sessionDetailProvider = StreamProvider.family<SessionDetail?, int>((
 ) {
   return ref.watch(sessionRepositoryProvider).watchSessionById(sessionId);
 });
+
+final studentAttendanceRecapProvider =
+    StreamProvider.family<
+      List<StudentAttendanceRecapItem>,
+      StudentAttendanceRecapFilter
+    >((ref, filter) {
+      return ref
+          .watch(sessionRepositoryProvider)
+          .watchStudentAttendanceRecap(filter);
+    });
 
 final sessionFormNotifierProvider =
     AsyncNotifierProvider.autoDispose<SessionFormNotifier, void>(

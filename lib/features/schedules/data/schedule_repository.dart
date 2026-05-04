@@ -10,11 +10,13 @@ class ScheduleDetail {
     required this.schedule,
     required this.student,
     required this.subject,
+    required this.academicPeriod,
   });
 
   final Schedule schedule;
   final Student student;
   final Subject subject;
+  final AcademicPeriod? academicPeriod;
 }
 
 class ScheduleFormData {
@@ -26,6 +28,8 @@ class ScheduleFormData {
     required this.endTime,
     required this.scheduleType,
     required this.reminderEnabled,
+    this.academicPeriodId,
+    this.reminderOffsetMinutes = 60,
     this.note,
     this.repeatCount = 1,
   });
@@ -37,6 +41,8 @@ class ScheduleFormData {
   final DateTime endTime;
   final String scheduleType;
   final bool reminderEnabled;
+  final int? academicPeriodId;
+  final int reminderOffsetMinutes;
   final String? note;
   final int repeatCount;
 }
@@ -148,6 +154,11 @@ class ScheduleRepository {
     try {
       _validate(data);
       final now = DateTime.now();
+      final academicPeriodId = await _resolveAcademicPeriodId(
+        data.studentId,
+        data.academicPeriodId,
+        data.date,
+      );
       await (_database.update(_database.schedules)
             ..where((schedule) => schedule.id.equals(id))
             ..where((schedule) => schedule.deletedAt.isNull()))
@@ -155,11 +166,13 @@ class ScheduleRepository {
             SchedulesCompanion(
               studentId: Value(data.studentId),
               subjectId: Value(data.subjectId),
+              academicPeriodId: Value(academicPeriodId),
               date: Value(_dateOnly(data.date)),
               startTime: Value(data.startTime),
               endTime: Value(data.endTime),
               scheduleType: Value(data.scheduleType),
               reminderEnabled: Value(data.reminderEnabled),
+              reminderOffsetMinutes: Value(data.reminderOffsetMinutes),
               note: Value(_blankToNull(data.note)),
               status: const Value(ScheduleStatus.scheduled),
               updatedAt: Value(now),
@@ -188,9 +201,32 @@ class ScheduleRepository {
     };
     _logger.logTransactionStart(action, logData);
     try {
+      final existing =
+          await (_database.select(_database.schedules)
+                ..where((schedule) => schedule.id.equals(id))
+                ..where((schedule) => schedule.deletedAt.isNull()))
+              .getSingleOrNull();
+      if (existing == null) {
+        throw StateError('Jadwal tidak ditemukan');
+      }
       if (!newEndTime.isAfter(newStartTime)) {
         throw ArgumentError('Jam selesai harus lebih besar dari jam mulai');
       }
+
+      final now = DateTime.now();
+      final oldDate = _dateOnly(existing.date);
+      final oldStartTime = existing.startTime;
+      final oldEndTime = existing.endTime;
+      final rescheduleNote = _appendRescheduleNote(
+        existing.note,
+        oldDate: oldDate,
+        oldStartTime: oldStartTime,
+        oldEndTime: oldEndTime,
+        newDate: _dateOnly(newDate),
+        newStartTime: newStartTime,
+        newEndTime: newEndTime,
+        changedAt: now,
+      );
 
       await (_database.update(_database.schedules)
             ..where((schedule) => schedule.id.equals(id))
@@ -200,11 +236,21 @@ class ScheduleRepository {
               date: Value(_dateOnly(newDate)),
               startTime: Value(newStartTime),
               endTime: Value(newEndTime),
-              status: const Value(ScheduleStatus.rescheduled),
-              updatedAt: Value(DateTime.now()),
+              status: const Value(ScheduleStatus.scheduled),
+              note: Value(rescheduleNote),
+              lastRescheduledAt: Value(now),
+              updatedAt: Value(now),
             ),
           );
-      await _tryScheduleReminder(id);
+      final updated = await (_database.select(
+        _database.schedules,
+      )..where((schedule) => schedule.id.equals(id))).getSingleOrNull();
+      if (updated != null) {
+        await _reminderService.rescheduleSessionReminder(
+          updated,
+          previousStartTime: oldStartTime,
+        );
+      }
       _logger.logTransactionSuccess(action, logData);
     } catch (error, stackTrace) {
       _logger.logTransactionError(action, error, stackTrace, logData);
@@ -266,6 +312,12 @@ class ScheduleRepository {
         _database.subjects,
         _database.subjects.id.equalsExp(_database.schedules.subjectId),
       ),
+      leftOuterJoin(
+        _database.academicPeriods,
+        _database.academicPeriods.id.equalsExp(
+          _database.schedules.academicPeriodId,
+        ),
+      ),
     ]))..where(_database.schedules.deletedAt.isNull());
   }
 
@@ -282,6 +334,7 @@ class ScheduleRepository {
       schedule: row.readTable(_database.schedules),
       student: row.readTable(_database.students),
       subject: row.readTable(_database.subjects),
+      academicPeriod: row.readTableOrNull(_database.academicPeriods),
     );
   }
 
@@ -293,24 +346,97 @@ class ScheduleRepository {
   ) {
     final now = DateTime.now();
     final offset = date.difference(_dateOnly(data.date));
-    return _database
-        .into(_database.schedules)
-        .insert(
-          SchedulesCompanion.insert(
-            studentId: data.studentId,
-            subjectId: data.subjectId,
-            date: _dateOnly(date),
-            startTime: data.startTime.add(offset),
-            endTime: data.endTime.add(offset),
-            scheduleType: Value(scheduleType),
-            status: const Value(ScheduleStatus.scheduled),
-            recurrenceGroupId: Value(recurrenceGroupId),
-            reminderEnabled: Value(data.reminderEnabled),
-            note: Value(_blankToNull(data.note)),
-            createdAt: Value(now),
-            updatedAt: Value(now),
+    return _resolveAcademicPeriodId(
+      data.studentId,
+      data.academicPeriodId,
+      date,
+    ).then(
+      (academicPeriodId) => _database
+          .into(_database.schedules)
+          .insert(
+            SchedulesCompanion.insert(
+              studentId: data.studentId,
+              subjectId: data.subjectId,
+              academicPeriodId: Value(academicPeriodId),
+              date: _dateOnly(date),
+              startTime: data.startTime.add(offset),
+              endTime: data.endTime.add(offset),
+              scheduleType: Value(scheduleType),
+              status: const Value(ScheduleStatus.scheduled),
+              recurrenceGroupId: Value(recurrenceGroupId),
+              reminderEnabled: Value(data.reminderEnabled),
+              reminderOffsetMinutes: Value(data.reminderOffsetMinutes),
+              note: Value(_blankToNull(data.note)),
+              createdAt: Value(now),
+              updatedAt: Value(now),
+            ),
           ),
+    );
+  }
+
+  Future<int?> _resolveAcademicPeriodId(
+    int studentId,
+    int? requestedAcademicPeriodId, [
+    DateTime? referenceDate,
+  ]) async {
+    if (requestedAcademicPeriodId != null) {
+      final existingPeriod =
+          await (_database.select(_database.academicPeriods)
+                ..where((period) => period.id.equals(requestedAcademicPeriodId))
+                ..where((period) => period.deletedAt.isNull()))
+              .getSingleOrNull();
+      if (existingPeriod == null) {
+        throw ArgumentError.value(
+          requestedAcademicPeriodId,
+          'academicPeriodId',
+          'Periode akademik tidak ditemukan',
         );
+      }
+      return requestedAcademicPeriodId;
+    }
+
+    final assignments =
+        await (_database.select(_database.studentPeriods).join([
+                innerJoin(
+                  _database.academicPeriods,
+                  _database.academicPeriods.id.equalsExp(
+                    _database.studentPeriods.academicPeriodId,
+                  ),
+                ),
+              ])
+              ..where(_database.studentPeriods.studentId.equals(studentId))
+              ..where(
+                _database.studentPeriods.status.equals(
+                  StudentPeriodStatus.active,
+                ),
+              )
+              ..where(_database.studentPeriods.deletedAt.isNull())
+              ..where(_database.academicPeriods.deletedAt.isNull())
+              ..orderBy([
+                OrderingTerm.desc(_database.academicPeriods.isActive),
+                OrderingTerm.desc(_database.academicPeriods.startDate),
+              ]))
+            .get();
+    final date = referenceDate == null ? null : _dateOnly(referenceDate);
+    if (date != null) {
+      for (final row in assignments) {
+        final period = row.readTable(_database.academicPeriods);
+        if (!date.isBefore(_dateOnly(period.startDate)) &&
+            !date.isAfter(_dateOnly(period.endDate))) {
+          return period.id;
+        }
+      }
+    }
+    if (assignments.isNotEmpty) {
+      return assignments.first.readTable(_database.academicPeriods).id;
+    }
+
+    final student =
+        await (_database.select(_database.students)
+              ..where((row) => row.id.equals(studentId))
+              ..where((row) => row.deletedAt.isNull()))
+            .getSingleOrNull();
+    return student?.defaultAcademicPeriodId;
   }
 
   Future<void> _tryScheduleReminder(int id) async {
@@ -335,6 +461,8 @@ class ScheduleRepository {
       'scheduleType': data.scheduleType,
       'repeatCount': data.repeatCount,
       'reminderEnabled': data.reminderEnabled,
+      'academicPeriodId': data.academicPeriodId,
+      'reminderOffsetMinutes': data.reminderOffsetMinutes,
     };
   }
 
@@ -346,6 +474,13 @@ class ScheduleRepository {
         data.scheduleType != ScheduleType.weekly &&
         data.scheduleType != ScheduleType.custom) {
       throw ArgumentError.value(data.scheduleType, 'scheduleType');
+    }
+    if (data.reminderOffsetMinutes < 0) {
+      throw ArgumentError.value(
+        data.reminderOffsetMinutes,
+        'reminderOffsetMinutes',
+        'Offset reminder tidak valid',
+      );
     }
   }
 
@@ -360,5 +495,32 @@ class ScheduleRepository {
   String? _blankToNull(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  String _appendRescheduleNote(
+    String? existingNote, {
+    required DateTime oldDate,
+    required DateTime oldStartTime,
+    required DateTime oldEndTime,
+    required DateTime newDate,
+    required DateTime newStartTime,
+    required DateTime newEndTime,
+    required DateTime changedAt,
+  }) {
+    final noteLines = <String>[
+      if (_blankToNull(existingNote) case final existing?) existing,
+      'Reschedule ${changedAt.toIso8601String()}: '
+          '${oldDate.toIso8601String().split('T').first} '
+          '${_timeLabel(oldStartTime)}-${_timeLabel(oldEndTime)} '
+          '-> ${newDate.toIso8601String().split('T').first} '
+          '${_timeLabel(newStartTime)}-${_timeLabel(newEndTime)}',
+    ];
+    return noteLines.join('\n');
+  }
+
+  String _timeLabel(DateTime value) {
+    final hour = value.hour.toString().padLeft(2, '0');
+    final minute = value.minute.toString().padLeft(2, '0');
+    return '$hour:$minute';
   }
 }

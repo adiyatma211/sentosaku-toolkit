@@ -11,6 +11,7 @@ class StudentFormData {
     required this.rateType,
     required this.rateAmount,
     required this.status,
+    this.defaultAcademicPeriodId,
     this.parentName,
     this.whatsapp,
     this.address,
@@ -26,6 +27,7 @@ class StudentFormData {
   final String? school;
   final String? grade;
   final String defaultSubject;
+  final int? defaultAcademicPeriodId;
   final String rateType;
   final int rateAmount;
   final String status;
@@ -60,6 +62,17 @@ class StudentRepository {
     return query.watchSingleOrNull();
   }
 
+  Stream<List<AcademicPeriod>> watchAcademicPeriods() {
+    final query = _database.select(_database.academicPeriods)
+      ..where((period) => period.deletedAt.isNull())
+      ..orderBy([
+        (period) => OrderingTerm.desc(period.isActive),
+        (period) => OrderingTerm.desc(period.startDate),
+        (period) => OrderingTerm.asc(period.name),
+      ]);
+    return query.watch();
+  }
+
   Future<int> countActiveStudents() async {
     final count = _database.students.id.count();
     final query = _database.selectOnly(_database.students)
@@ -77,6 +90,9 @@ class StudentRepository {
     _logger.logTransactionStart(action, logData);
     final now = DateTime.now();
     try {
+      final defaultAcademicPeriodId = await _normalizeAcademicPeriodId(
+        data.defaultAcademicPeriodId,
+      );
       final id = await _database
           .into(_database.students)
           .insert(
@@ -88,6 +104,7 @@ class StudentRepository {
               school: Value(_blankToNull(data.school)),
               grade: Value(_blankToNull(data.grade)),
               defaultSubject: Value(data.defaultSubject.trim()),
+              defaultAcademicPeriodId: Value(defaultAcademicPeriodId),
               rateType: Value(data.rateType),
               rateAmount: Value(data.rateAmount),
               status: Value(data.status),
@@ -109,6 +126,9 @@ class StudentRepository {
     final logData = {'studentId': id, ..._studentLogData(data)};
     _logger.logTransactionStart(action, logData);
     try {
+      final defaultAcademicPeriodId = await _normalizeAcademicPeriodId(
+        data.defaultAcademicPeriodId,
+      );
       await (_database.update(_database.students)
             ..where((student) => student.id.equals(id))
             ..where((student) => student.deletedAt.isNull()))
@@ -121,6 +141,7 @@ class StudentRepository {
               school: Value(_blankToNull(data.school)),
               grade: Value(_blankToNull(data.grade)),
               defaultSubject: Value(data.defaultSubject.trim()),
+              defaultAcademicPeriodId: Value(defaultAcademicPeriodId),
               rateType: Value(data.rateType),
               rateAmount: Value(data.rateAmount),
               status: Value(data.status),
@@ -179,10 +200,21 @@ class StudentRepository {
     return {
       'name': data.name.trim(),
       'defaultSubject': data.defaultSubject.trim(),
+      'defaultAcademicPeriodId': data.defaultAcademicPeriodId,
       'rateType': data.rateType,
       'rateAmount': data.rateAmount,
       'status': data.status,
     };
+  }
+
+  Future<int?> _normalizeAcademicPeriodId(int? id) async {
+    if (id == null) return null;
+    final exists =
+        await (_database.selectOnly(_database.academicPeriods)
+              ..addColumns([_database.academicPeriods.id])
+              ..where(_database.academicPeriods.id.equals(id)))
+            .getSingleOrNull();
+    return exists == null ? null : id;
   }
 
   String? _blankToNull(String? value) {

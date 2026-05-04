@@ -127,6 +127,8 @@ class _ScheduleDetailContent extends StatelessWidget {
         ? 'Lokasi belum diisi'
         : address;
     final note = schedule.note?.trim();
+    final academicPeriodName = detail.academicPeriod?.name.trim();
+    final rescheduledAt = schedule.lastRescheduledAt;
 
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 28),
@@ -175,6 +177,12 @@ class _ScheduleDetailContent extends StatelessWidget {
               label: 'Mata pelajaran',
               value: detail.subject.name,
             ),
+            if (academicPeriodName != null && academicPeriodName.isNotEmpty)
+              _DetailInfoTile(
+                icon: Icons.school_outlined,
+                label: 'Periode akademik',
+                value: academicPeriodName,
+              ),
             _DetailInfoTile(
               icon: Icons.event_repeat_outlined,
               label: 'Tipe jadwal',
@@ -185,8 +193,19 @@ class _ScheduleDetailContent extends StatelessWidget {
                   ? Icons.notifications_active_outlined
                   : Icons.notifications_off_outlined,
               label: 'Reminder',
-              value: schedule.reminderEnabled ? 'Aktif' : 'Tidak aktif',
+              value: schedule.reminderEnabled
+                  ? 'Aktif (${schedule.reminderOffsetMinutes} menit sebelum les)'
+                  : 'Tidak aktif',
             ),
+            if (rescheduledAt != null)
+              _DetailInfoTile(
+                icon: Icons.swap_horiz_outlined,
+                label: 'Reschedule terakhir',
+                value: DateFormat(
+                  'd MMM yyyy, HH:mm',
+                  'id_ID',
+                ).format(rescheduledAt),
+              ),
           ],
         ),
         const SizedBox(height: 16),
@@ -246,8 +265,7 @@ class _ScheduleDetailContent extends StatelessWidget {
   bool _canCreateSession(String status) {
     return status != ScheduleStatus.done &&
         status != ScheduleStatus.cancelled &&
-        status != ScheduleStatus.noShow &&
-        status != ScheduleStatus.rescheduled;
+        status != ScheduleStatus.noShow;
   }
 }
 

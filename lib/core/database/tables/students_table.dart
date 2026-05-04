@@ -11,6 +11,7 @@ class Students extends Table {
   TextColumn get school => text().nullable()();
   TextColumn get grade => text().nullable()();
   TextColumn get defaultSubject => text().nullable()();
+  IntColumn get defaultAcademicPeriodId => integer().nullable()();
   TextColumn get rateType =>
       text().withDefault(const Constant(RateType.perSession))();
   IntColumn get rateAmount => integer().withDefault(const Constant(0))();

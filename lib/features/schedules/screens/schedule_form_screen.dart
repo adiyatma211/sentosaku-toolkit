@@ -7,6 +7,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/feedback/app_toast.dart';
 import '../../../core/navigation/app_back_scope.dart';
+import '../../academic/providers/academic_period_provider.dart';
 import '../../students/providers/student_provider.dart';
 import '../data/schedule_repository.dart';
 import '../providers/schedule_provider.dart';
@@ -36,9 +37,11 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
   final _formKey = GlobalKey<FormState>();
   final _subjectController = TextEditingController();
   final _repeatCountController = TextEditingController(text: '4');
+  final _reminderOffsetController = TextEditingController(text: '60');
   final _noteController = TextEditingController();
 
   int? _studentId;
+  int? _academicPeriodId;
   late DateTime _date;
   late TimeOfDay _startTime;
   late TimeOfDay _endTime;
@@ -59,6 +62,7 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
   void dispose() {
     _subjectController.dispose();
     _repeatCountController.dispose();
+    _reminderOffsetController.dispose();
     _noteController.dispose();
     super.dispose();
   }
@@ -108,6 +112,7 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
     final subjectsState = _studentId == null
         ? null
         : ref.watch(subjectsByStudentProvider(_studentId!));
+    final academicPeriodsState = ref.watch(academicPeriodsProvider);
     final dateFormat = DateFormat('d MMMM yyyy');
 
     return AppBackScope(
@@ -215,6 +220,70 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
                             child: Text('Gagal memuat subject: $error'),
                           ),
                         ),
+                      const SizedBox(height: 12),
+                      academicPeriodsState.when(
+                        data: (periods) {
+                          if (periods.isEmpty) {
+                            return const InputDecorator(
+                              decoration: InputDecoration(
+                                labelText: 'Periode akademik',
+                                helperText:
+                                    'Belum ada periode akademik aktif yang bisa dipilih.',
+                                prefixIcon: Icon(Icons.school_outlined),
+                              ),
+                              child: Text('Tidak ada data periode akademik'),
+                            );
+                          }
+
+                          final selectedValue =
+                              periods.any(
+                                (period) => period.id == _academicPeriodId,
+                              )
+                              ? _academicPeriodId
+                              : null;
+                          return DropdownButtonFormField<int>(
+                            value: selectedValue,
+                            decoration: const InputDecoration(
+                              labelText: 'Periode akademik',
+                              helperText:
+                                  'Mengikuti periode aktif murid, tetapi tetap bisa disesuaikan.',
+                              prefixIcon: Icon(Icons.school_outlined),
+                            ),
+                            items: periods
+                                .map(
+                                  (period) => DropdownMenuItem(
+                                    value: period.id,
+                                    child: Text(period.name),
+                                  ),
+                                )
+                                .toList(),
+                            onChanged: isSubmitting
+                                ? null
+                                : (value) =>
+                                      setState(() => _academicPeriodId = value),
+                            validator: (value) {
+                              final selectedStudent = students.where(
+                                (student) => student.id == _studentId,
+                              );
+                              if (selectedStudent.isEmpty) return null;
+                              if (selectedStudent
+                                          .first
+                                          .defaultAcademicPeriodId !=
+                                      null &&
+                                  value == null) {
+                                return 'Periode akademik wajib dipilih';
+                              }
+                              return null;
+                            },
+                          );
+                        },
+                        loading: () => const Padding(
+                          padding: EdgeInsets.only(top: 4),
+                          child: LinearProgressIndicator(),
+                        ),
+                        error: (error, stackTrace) =>
+                            Text('Gagal memuat periode akademik: $error'),
+                      ),
                     ],
                   ),
                   const SizedBox(height: 16),
@@ -333,7 +402,7 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
                           secondary: const Icon(Icons.alarm_outlined),
                           title: const Text('Reminder'),
                           subtitle: const Text(
-                            'Placeholder notifikasi lokal Sprint 03',
+                            'Siapkan kontrak reminder lokal dan log offline-first.',
                           ),
                           value: _reminderEnabled,
                           onChanged: isSubmitting
@@ -341,6 +410,18 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
                               : (value) =>
                                     setState(() => _reminderEnabled = value),
                         ),
+                      ),
+                      const SizedBox(height: 12),
+                      TextFormField(
+                        controller: _reminderOffsetController,
+                        decoration: const InputDecoration(
+                          labelText: 'Offset reminder (menit)',
+                          helperText:
+                              'Default 60 menit sebelum les. Isi 0 untuk tepat saat mulai.',
+                          prefixIcon: Icon(Icons.more_time_outlined),
+                        ),
+                        keyboardType: TextInputType.number,
+                        validator: _validateReminderOffset,
                       ),
                       const SizedBox(height: 12),
                       TextFormField(
@@ -401,6 +482,7 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
     _didLoadSchedule = true;
     final schedule = detail.schedule;
     _studentId = schedule.studentId;
+    _academicPeriodId = schedule.academicPeriodId;
     _subjectController.text = detail.subject.name;
     _date = schedule.date;
     _startTime = TimeOfDay.fromDateTime(schedule.startTime);
@@ -409,6 +491,7 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
         ? ScheduleType.weekly
         : ScheduleType.once;
     _reminderEnabled = schedule.reminderEnabled;
+    _reminderOffsetController.text = schedule.reminderOffsetMinutes.toString();
     _noteController.text = schedule.note ?? '';
   }
 
@@ -424,6 +507,9 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
       }
       if (_subjectController.text.trim().isEmpty) {
         _subjectController.text = student?.defaultSubject ?? '';
+      }
+      if (student?.defaultAcademicPeriodId != null) {
+        _academicPeriodId = student!.defaultAcademicPeriodId;
       }
     });
   }
@@ -487,6 +573,9 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
         endTime: end,
         scheduleType: _scheduleType,
         reminderEnabled: _reminderEnabled,
+        academicPeriodId: _academicPeriodId,
+        reminderOffsetMinutes:
+            int.tryParse(_reminderOffsetController.text.trim()) ?? 60,
         note: _noteController.text,
         repeatCount: int.tryParse(_repeatCountController.text.trim()) ?? 1,
       );
@@ -539,6 +628,14 @@ class _ScheduleFormScreenState extends ConsumerState<ScheduleFormScreen> {
     final count = int.tryParse(value?.trim() ?? '');
     if (count == null || count <= 0) {
       return 'Jumlah pengulangan harus lebih dari 0';
+    }
+    return null;
+  }
+
+  String? _validateReminderOffset(String? value) {
+    final parsed = int.tryParse(value?.trim() ?? '');
+    if (parsed == null || parsed < 0) {
+      return 'Offset reminder harus 0 atau lebih';
     }
     return null;
   }

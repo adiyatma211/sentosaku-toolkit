@@ -13,8 +13,11 @@ class InvoiceListScreen extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(invoiceReminderSyncProvider);
     final filter = ref.watch(invoiceListFilterProvider);
     final invoicesState = ref.watch(invoicesProvider);
+    final dueSoonState = ref.watch(dueSoonInvoicesProvider);
+    final overdueState = ref.watch(overdueInvoicesProvider);
     startRequestedShowcase(
       context: context,
       ref: ref,
@@ -61,6 +64,30 @@ class InvoiceListScreen extends ConsumerWidget {
                         .setFilter(selected.first);
                   },
                 ),
+              ),
+            ),
+            Padding(
+              padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: _ReminderSummaryCard(
+                      label: 'Due soon',
+                      value: dueSoonState.asData?.value.length,
+                      icon: Icons.notifications_active_outlined,
+                      color: Colors.orange,
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: _ReminderSummaryCard(
+                      label: 'Overdue',
+                      value: overdueState.asData?.value.length,
+                      icon: Icons.warning_amber_rounded,
+                      color: Colors.red,
+                    ),
+                  ),
+                ],
               ),
             ),
             Expanded(
@@ -110,3 +137,44 @@ final _paymentShowcaseKeys = [
   AppShowcaseKeys.paymentFilter,
   AppShowcaseKeys.paymentList,
 ];
+
+class _ReminderSummaryCard extends StatelessWidget {
+  const _ReminderSummaryCard({
+    required this.label,
+    required this.value,
+    required this.icon,
+    required this.color,
+  });
+
+  final String label;
+  final int? value;
+  final IconData icon;
+  final MaterialColor color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Card(
+      child: Padding(
+        padding: const EdgeInsets.all(12),
+        child: Row(
+          children: [
+            Icon(icon, color: color.shade600),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(label, style: Theme.of(context).textTheme.labelLarge),
+                  Text(
+                    value == null ? '...' : '$value invoice',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

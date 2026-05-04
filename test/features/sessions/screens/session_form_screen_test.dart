@@ -55,6 +55,7 @@ void main() {
     expect(find.text('10 April 2026'), findsOneWidget);
     expect(find.text('09.00 - 10.30'), findsOneWidget);
     expect(editableTextWithValue('175000'), findsOneWidget);
+    expect(find.text('Assessment terstruktur'), findsOneWidget);
     expect(find.text('Simpan sesi'), findsOneWidget);
   });
 
@@ -84,11 +85,18 @@ void main() {
 
     await tester.enterText(fieldByLabel('Biaya sesi'), '150000');
     await tester.enterText(fieldByLabel('Materi'), 'Turunan');
+    await tester.enterText(
+      fieldByLabel('Pemahaman materi'),
+      'Sudah memahami turunan dasar.',
+    );
     await tester.tap(find.text('Simpan sesi'));
     await tester.pumpAndSettle();
 
     final sessions = await database.select(database.sessions).get();
+    final assessments = await database.select(database.assessments).get();
     expect(sessions, hasLength(1));
+    expect(assessments, hasLength(1));
+    expect(assessments.single.pemahamanMateri, 'Sudah memahami turunan dasar.');
     expect(find.text('session-${sessions.single.id}'), findsOneWidget);
   });
 

@@ -8,7 +8,10 @@ import '../data/local_reminder_service.dart';
 import '../data/schedule_repository.dart';
 
 final localReminderServiceProvider = Provider<LocalReminderService>((ref) {
-  return const LocalReminderService();
+  return LocalReminderService(
+    ref.watch(databaseProvider),
+    ref.watch(appLoggerProvider),
+  );
 });
 
 final scheduleRepositoryProvider = Provider<ScheduleRepository>((ref) {

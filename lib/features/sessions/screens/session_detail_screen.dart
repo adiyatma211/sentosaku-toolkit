@@ -91,7 +91,10 @@ class _SessionDetailContent extends StatelessWidget {
                 ),
                 _InfoRow(label: 'Materi', value: session.material),
                 _InfoRow(label: 'PR', value: session.homework),
-                _InfoRow(label: 'Catatan progress', value: session.note),
+                _InfoRow(
+                  label: 'Catatan progress',
+                  value: session.progressNote ?? session.note,
+                ),
                 _InfoRow(
                   label: 'Biaya',
                   value: currencyFormat.format(session.feeAmount),
@@ -101,6 +104,52 @@ class _SessionDetailContent extends StatelessWidget {
             ),
           ),
         ),
+        if (detail.assessment != null) ...[
+          const SizedBox(height: 16),
+          Card(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Assessment sesi',
+                    style: Theme.of(context).textTheme.titleMedium,
+                  ),
+                  const SizedBox(height: 12),
+                  _InfoRow(
+                    label: 'Pemahaman materi',
+                    value: detail.assessment!.pemahamanMateri,
+                  ),
+                  _InfoRow(
+                    label: 'Keaktifan tanya jawab',
+                    value: detail.assessment!.keaktifanTanyaJawab,
+                  ),
+                  _InfoRow(
+                    label: 'Ketepatan tugas',
+                    value: detail.assessment!.ketepatanKerapianTugas,
+                  ),
+                  _InfoRow(
+                    label: 'Kehadiran dan fokus',
+                    value: detail.assessment!.konsistensiKehadiranFokus,
+                  ),
+                  _InfoRow(
+                    label: 'Target berikutnya',
+                    value: detail.assessment!.targetMateriDrilling,
+                  ),
+                  _InfoRow(
+                    label: 'Sikap belajar',
+                    value: detail.assessment!.sikapBelajarRespon,
+                  ),
+                  _InfoRow(
+                    label: 'Ringkasan',
+                    value: detail.assessment!.summaryNote,
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ],
     );
   }

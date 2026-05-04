@@ -3,15 +3,28 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/database/database_provider.dart';
 import '../../../core/logging/logger_provider.dart';
+import '../../../core/reminders/invoice_reminder_service.dart';
 import '../data/payment_repository.dart';
 
 enum InvoiceListFilter { unpaid, all }
+
+final invoiceReminderServiceProvider = Provider<InvoiceReminderService>((ref) {
+  return InvoiceReminderService(
+    ref.watch(databaseProvider),
+    ref.watch(appLoggerProvider),
+  );
+});
 
 final paymentRepositoryProvider = Provider<PaymentRepository>((ref) {
   return PaymentRepository(
     ref.watch(databaseProvider),
     ref.watch(appLoggerProvider),
+    invoiceReminderService: ref.watch(invoiceReminderServiceProvider),
   );
+});
+
+final invoiceReminderSyncProvider = FutureProvider<void>((ref) async {
+  await ref.watch(invoiceReminderServiceProvider).syncActiveInvoiceReminders();
 });
 
 final invoiceListFilterProvider =
@@ -30,6 +43,14 @@ class InvoiceListFilterNotifier extends Notifier<InvoiceListFilter> {
 
 final unpaidInvoicesProvider = StreamProvider<List<InvoiceListItem>>((ref) {
   return ref.watch(paymentRepositoryProvider).watchUnpaidInvoices();
+});
+
+final dueSoonInvoicesProvider = StreamProvider<List<InvoiceListItem>>((ref) {
+  return ref.watch(paymentRepositoryProvider).watchDueSoonInvoices();
+});
+
+final overdueInvoicesProvider = StreamProvider<List<InvoiceListItem>>((ref) {
+  return ref.watch(paymentRepositoryProvider).watchOverdueInvoices();
 });
 
 final invoicesProvider = StreamProvider<List<InvoiceListItem>>((ref) {

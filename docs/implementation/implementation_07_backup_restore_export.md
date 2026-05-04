@@ -1,4 +1,4 @@
-# Sprint 07 - Backup, Restore, dan Export
+# Sprint 08 - Backup, Restore, dan Export
 
 ## Tujuan
 
@@ -6,9 +6,9 @@ Membuat modul backup, restore, dan export setelah database dan laporan stabil. S
 
 ## Dependency / Prasyarat
 
-- Sprint 01 sampai Sprint 06 selesai.
+- Sprint 01 sampai Sprint 07 selesai.
 - Schema database MVP sudah stabil.
-- Laporan sudah punya data preparation dari `ReportRepository`.
+- Laporan sudah punya data preparation dari `ReportRepository` termasuk rekap kehadiran dan progress report.
 - Strategi lokasi file database Drift sudah jelas.
 
 ## Output Akhir
@@ -16,7 +16,7 @@ Membuat modul backup, restore, dan export setelah database dan laporan stabil. S
 - Guru bisa membuat backup file database dengan nama bertanggal.
 - Guru bisa restore database dengan strategi replace setelah validasi dan konfirmasi.
 - Aplikasi bisa membuka ulang database setelah restore.
-- Guru bisa export laporan PDF/Excel dari data laporan.
+- Guru bisa export laporan PDF/Excel dari data laporan, rekap kehadiran, dan progress report.
 - Metadata backup terakhir bisa ditampilkan untuk reminder backup.
 
 ## Struktur File Yang Akan Dibuat
@@ -89,8 +89,8 @@ lib/features/reports/
 - [ ] Implement restore dengan close database, replace file, reopen database, dan refresh provider.
 - [ ] Buat error handling restore agar aplikasi tidak kehilangan database lama jika file backup invalid.
 - [ ] Buat `ExportService` untuk PDF dan Excel.
-- [ ] Hubungkan export dengan data preparation dari Sprint 06.
-- [ ] Buat export pendapatan dan unpaid report minimal.
+- [ ] Hubungkan export dengan data preparation dari Sprint 07.
+- [ ] Buat export pendapatan, unpaid report, rekap kehadiran, dan progress report minimal.
 - [ ] Tambahkan warning backup jika backup terakhir lebih dari 7 hari.
 
 ## Validasi dan Error Handling

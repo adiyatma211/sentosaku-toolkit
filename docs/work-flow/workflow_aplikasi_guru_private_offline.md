@@ -16,7 +16,7 @@ Masalah utama yang diselesaikan:
 
 Solusi aplikasi:
 
-> Aplikasi Flutter offline-first untuk mengelola data siswa, jadwal les, absensi pertemuan, pembayaran, laporan pendapatan, dan backup data tanpa bergantung internet.
+> Aplikasi Flutter offline-first untuk mengelola data siswa, periode akademik/semester, jadwal les, absensi dan assessment pertemuan, pembayaran, laporan perkembangan, laporan pendapatan, serta backup data tanpa bergantung internet.
 
 ---
 
@@ -29,10 +29,13 @@ Guru adalah pengguna utama aplikasi.
 Guru dapat:
 
 - Menambahkan data siswa.
+- Mengatur periode akademik atau semester aktif.
 - Mengatur jadwal les.
 - Mencatat kehadiran siswa.
 - Mencatat materi pembelajaran.
+- Menginput assessment belajar secara terstruktur.
 - Mencatat pembayaran.
+- Melihat rekap kehadiran dan progress report per siswa.
 - Melihat laporan pendapatan.
 - Melakukan backup dan restore data.
 
@@ -69,29 +72,33 @@ Data orang tua digunakan untuk:
 ```text
 Guru buka aplikasi
 ↓
+Guru menyiapkan periode akademik / semester aktif
+↓
 Guru input data siswa
 ↓
-Guru input mata pelajaran dan tarif
+Guru input mata pelajaran, tarif, dan assign siswa ke periode aktif
 ↓
 Guru membuat jadwal les
 ↓
-Jadwal tersimpan di kalender lokal
+Jadwal tersimpan di kalender lokal dan terhubung ke periode akademik
 ↓
 Aplikasi memberi reminder sebelum sesi dimulai
 ↓
 Guru menjalankan sesi les
 ↓
-Guru mencatat absensi dan materi pembelajaran
+Guru mencatat absensi, materi pembelajaran, dan assessment sesi
 ↓
-Sistem menyimpan riwayat pertemuan
+Sistem menyimpan riwayat pertemuan dan memperbarui rekap kehadiran
 ↓
 Sistem membuat atau memperbarui tagihan
+↓
+Sistem memberi reminder invoice jatuh tempo dan reminder jika jadwal di-reschedule
 ↓
 Guru mencatat pembayaran siswa
 ↓
 Sistem memperbarui status pembayaran
 ↓
-Guru melihat laporan pendapatan
+Guru melihat laporan pendapatan, rekap kehadiran, dan progress report per periode/semester
 ↓
 Guru export laporan atau backup data
 ```
@@ -144,7 +151,50 @@ Masuk ke dashboard
 
 ---
 
-## 4.2 Workflow Master Data Siswa
+## 4.2 Workflow Periode Akademik / Semester
+
+Modul ini menjadi dasar pengelompokan data operasional per semester atau periode belajar.
+
+### Alur Setup Periode
+
+```text
+Guru buka menu Periode Akademik
+↓
+Klik Tambah Periode
+↓
+Input nama periode / semester
+↓
+Input tanggal mulai dan tanggal selesai
+↓
+Tandai periode aktif
+↓
+Simpan periode
+↓
+Guru assign siswa ke periode aktif
+↓
+Jadwal, sesi, tagihan, dan laporan memakai referensi periode yang sama
+```
+
+### Data Periode Akademik
+
+| Field | Contoh |
+|---|---|
+| Nama periode | Semester Ganjil 2026/2027 |
+| Tipe | Semester |
+| Tanggal mulai | 15 Juli 2026 |
+| Tanggal selesai | 20 Desember 2026 |
+| Status | Aktif |
+| Catatan | Fokus persiapan PAS |
+
+### Output
+
+- Periode akademik tersimpan di database lokal.
+- Siswa dapat dihubungkan ke periode aktif.
+- Jadwal, sesi, tagihan, rekap kehadiran, dan progress report dapat difilter per periode.
+
+---
+
+## 4.3 Workflow Master Data Siswa
 
 Modul ini menggantikan pencatatan data siswa di Excel atau kertas.
 
@@ -158,6 +208,8 @@ Klik Tambah Siswa
 Input biodata siswa
 ↓
 Input data orang tua/wali
+↓
+Pilih periode akademik aktif
 ↓
 Input mata pelajaran
 ↓
@@ -179,6 +231,7 @@ Siswa muncul di daftar siswa aktif
 | Sekolah | SMP Negeri 1 |
 | Kelas | 8 |
 | Mata pelajaran | Matematika |
+| Periode akademik aktif | Semester Ganjil 2026/2027 |
 | Tipe tarif | Per sesi |
 | Nominal tarif | Rp100.000 |
 | Status | Aktif |
@@ -195,12 +248,13 @@ Siswa muncul di daftar siswa aktif
 ### Output
 
 - Data siswa tersimpan di database lokal.
+- Riwayat keikutsertaan siswa per periode akademik dapat ditelusuri.
 - Siswa bisa dipilih saat membuat jadwal.
 - Siswa bisa dipilih saat membuat tagihan/pembayaran.
 
 ---
 
-## 4.3 Workflow Jadwal Les
+## 4.4 Workflow Jadwal Les
 
 Modul jadwal digunakan untuk mengatur waktu belajar siswa.
 
@@ -214,6 +268,8 @@ Klik Tambah Jadwal
 Pilih siswa
 ↓
 Pilih mata pelajaran
+↓
+Pilih atau konfirmasi periode akademik
 ↓
 Input tanggal
 ↓
@@ -260,15 +316,30 @@ Guru membuka detail jadwal
 Guru menjalankan sesi les
 ```
 
+### Alur Reminder Reschedule Jadwal
+
+```text
+Guru mengubah tanggal atau jam jadwal
+↓
+Sistem menyimpan status reschedule dan waktu lama
+↓
+Sistem membatalkan reminder lama
+↓
+Sistem membuat reminder baru berdasarkan jadwal pengganti
+↓
+Daftar reminder menandai bahwa jadwal telah dipindah
+```
+
 ### Output
 
 - Jadwal tersimpan offline.
+- Jadwal terhubung ke siswa, mata pelajaran, dan periode akademik.
 - Guru dapat melihat jadwal harian, mingguan, dan bulanan.
 - Guru mendapat reminder sebelum sesi dimulai.
 
 ---
 
-## 4.4 Workflow Pertemuan / Sesi Les
+## 4.5 Workflow Pertemuan / Sesi Les
 
 Modul ini mencatat realisasi dari jadwal les.
 
@@ -287,11 +358,15 @@ Input materi yang diajarkan
 ↓
 Input PR atau tugas
 ↓
+Input assessment terstruktur
+↓
 Input catatan perkembangan siswa
 ↓
 Simpan sesi
 ↓
 Sistem membuat riwayat pertemuan
+↓
+Sistem memperbarui rekap kehadiran siswa pada periode terkait
 ↓
 Sistem memperbarui status jadwal menjadi selesai
 ```
@@ -303,6 +378,7 @@ Sistem memperbarui status jadwal menjadi selesai
 | Tanggal sesi | 29 April 2026 |
 | Nama siswa | Andi Pratama |
 | Mata pelajaran | Matematika |
+| Periode akademik | Semester Ganjil 2026/2027 |
 | Jam mulai | 08:00 |
 | Jam selesai | 09:30 |
 | Materi | Persamaan linear |
@@ -311,6 +387,17 @@ Sistem memperbarui status jadwal menjadi selesai
 | Catatan | Masih perlu latihan soal cerita |
 | Biaya sesi | Rp100.000 |
 | Status bayar | Belum dibayar |
+
+### Aspek Assessment Terstruktur
+
+| Aspek | Contoh Isi |
+|---|---|
+| Pemahaman materi | Sudah memahami persamaan linear 1 variabel |
+| Keaktifan tanya jawab | Aktif bertanya saat latihan |
+| Ketepatan/kerapian tugas | PR selesai tetapi masih kurang rapi |
+| Konsistensi kehadiran & fokus | Hadir rutin, fokus menurun di 15 menit akhir |
+| Target materi/drilling soal | Lanjut drilling soal cerita perbandingan |
+| Sikap belajar/respon siswa | Kooperatif dan cepat merespon arahan |
 
 ### Status Kehadiran
 
@@ -325,12 +412,14 @@ Sistem memperbarui status jadwal menjadi selesai
 ### Output
 
 - Riwayat pertemuan tersimpan.
+- Assessment tersimpan sebagai sumber evaluasi perkembangan siswa.
+- Rekap kehadiran per siswa dan per periode dapat dihitung dari data sesi.
 - Data bisa digunakan untuk laporan belajar.
 - Data bisa digunakan untuk perhitungan tagihan.
 
 ---
 
-## 4.5 Workflow Pembayaran
+## 4.6 Workflow Pembayaran
 
 Modul pembayaran digunakan untuk mencatat uang masuk dari siswa.
 
@@ -344,7 +433,7 @@ Modul pembayaran digunakan untuk mencatat uang masuk dari siswa.
 
 ---
 
-### 4.5.1 Workflow Pembayaran Per Sesi
+### 4.6.1 Workflow Pembayaran Per Sesi
 
 ```text
 Sesi les selesai
@@ -366,7 +455,7 @@ Simpan pembayaran
 Status berubah menjadi Lunas
 ```
 
-### 4.5.2 Workflow Pembayaran Bulanan
+### 4.6.2 Workflow Pembayaran Bulanan
 
 ```text
 Awal bulan / periode tagihan
@@ -388,7 +477,7 @@ Input pembayaran
 Status berubah menjadi Lunas
 ```
 
-### 4.5.3 Workflow Pembayaran Paket
+### 4.6.3 Workflow Pembayaran Paket
 
 ```text
 Guru membuat paket belajar
@@ -404,6 +493,22 @@ Paket aktif
 Setiap sesi selesai, kuota paket berkurang
 ↓
 Jika kuota habis, sistem memberi tanda paket selesai
+```
+
+### 4.6.4 Workflow Reminder Invoice
+
+```text
+Tagihan tersimpan dengan tanggal jatuh tempo
+↓
+Sistem memeriksa tagihan yang belum lunas
+↓
+Saat mendekati atau melewati jatuh tempo
+↓
+Aplikasi menampilkan reminder pembayaran
+↓
+Guru membuka detail tagihan
+↓
+Guru melakukan follow-up ke orang tua/wali
 ```
 
 ### Metode Pembayaran
@@ -430,10 +535,11 @@ Jika kuota habis, sistem memberi tanda paket selesai
 - Status tagihan berubah otomatis.
 - Pendapatan bertambah di laporan.
 - Guru bisa melihat siswa yang belum membayar.
+- Guru bisa melihat reminder invoice yang perlu difollow-up.
 
 ---
 
-## 4.6 Workflow Laporan Pendapatan
+## 4.7 Workflow Laporan dan Progress Report
 
 Modul laporan digunakan untuk melihat performa pendapatan guru.
 
@@ -442,15 +548,45 @@ Modul laporan digunakan untuk melihat performa pendapatan guru.
 ```text
 Guru buka menu Laporan
 ↓
-Pilih periode laporan
+Pilih periode laporan atau semester
 ↓
 Sistem mengambil data pembayaran
 ↓
-Sistem menghitung total pendapatan
+Sistem menghitung pendapatan, rekap kehadiran, dan data perkembangan siswa
 ↓
 Sistem menampilkan ringkasan
 ↓
 Guru dapat export laporan
+```
+
+### Alur Progress Report Siswa
+
+```text
+Guru buka detail siswa atau menu Laporan
+↓
+Pilih periode akademik / semester
+↓
+Sistem mengambil sesi, absensi, dan assessment siswa
+↓
+Sistem menyusun ringkasan perkembangan belajar
+↓
+Guru meninjau dan melengkapi catatan akhir
+↓
+Progress report tersimpan dan siap di-export
+```
+
+### Alur Rekap Kehadiran
+
+```text
+Guru buka menu Laporan
+↓
+Pilih siswa atau semua siswa
+↓
+Pilih periode akademik / semester
+↓
+Sistem menghitung jumlah hadir, izin, tidak hadir, batal, dan reschedule
+↓
+Guru melihat rekap kehadiran per siswa atau per periode
 ```
 
 ### Filter Laporan
@@ -460,6 +596,7 @@ Guru dapat export laporan
 | Hari ini | Pendapatan hari berjalan |
 | Minggu ini | Pendapatan minggu berjalan |
 | Bulan ini | Pendapatan bulan berjalan |
+| Per semester / periode | Rekap sesuai periode akademik |
 | Custom tanggal | Periode sesuai pilihan guru |
 | Per siswa | Laporan per nama siswa |
 | Per mata pelajaran | Laporan berdasarkan mapel |
@@ -473,6 +610,8 @@ Guru dapat export laporan
 | Total tagihan | Total tagihan dibuat |
 | Tagihan belum dibayar | Outstanding payment |
 | Jumlah sesi selesai | Total pertemuan terlaksana |
+| Rekap kehadiran | Total hadir, izin, tidak hadir, batal, reschedule |
+| Progress report | Ringkasan perkembangan dan target belajar siswa |
 | Siswa aktif | Jumlah siswa aktif |
 | Pendapatan per siswa | Breakdown siswa |
 | Pendapatan per mapel | Breakdown mata pelajaran |
@@ -481,12 +620,14 @@ Guru dapat export laporan
 
 - Guru mengetahui pendapatan aktual.
 - Guru mengetahui tagihan belum dibayar.
+- Guru mengetahui perkembangan belajar siswa per periode/semester.
+- Guru mengetahui rekap kehadiran per siswa/periode.
 - Guru bisa export PDF/Excel.
 - Guru bisa membuat rekap bulanan.
 
 ---
 
-## 4.7 Workflow Export Laporan
+## 4.8 Workflow Export Laporan
 
 Export digunakan agar guru tetap bisa menyimpan laporan dalam bentuk dokumen.
 
@@ -525,6 +666,8 @@ Guru menyimpan atau membagikan file
 | PDF | Laporan rapi untuk dibagikan |
 | Excel | Data mentah untuk diolah lagi |
 | CSV | Alternatif ringan untuk backup data |
+| PDF Progress Report | Ringkasan perkembangan siswa per periode |
+| Excel Rekap Kehadiran | Rekap absensi per siswa/periode |
 
 ### Output
 
@@ -534,7 +677,7 @@ Guru menyimpan atau membagikan file
 
 ---
 
-## 4.8 Workflow Backup dan Restore
+## 4.9 Workflow Backup dan Restore
 
 Karena aplikasi offline, backup wajib tersedia agar data tidak hilang.
 
@@ -613,6 +756,8 @@ Jadwal Hari Ini
 Jadwal Minggu Ini
 Pertemuan Belum Selesai
 Reminder Pembayaran
+Reminder Reschedule
+Rekap Kehadiran Periode Aktif
 ```
 
 ## Alur Dashboard
@@ -774,6 +919,8 @@ Klik Tandai Selesai
 ↓
 Isi materi pembelajaran
 ↓
+Isi assessment terstruktur
+↓
 Isi catatan siswa
 ↓
 Isi status kehadiran
@@ -788,6 +935,7 @@ Sistem membuat tagihan jika diperlukan
 Hasil:
 
 - Riwayat pembelajaran tersimpan.
+- Assessment dan rekap kehadiran siswa ikut terbarui.
 - Pendapatan/tagihan bisa dihitung.
 - Status jadwal berubah menjadi selesai.
 
@@ -864,7 +1012,31 @@ Hasil:
 
 ---
 
-## 7.7 Use Case: Guru Backup Data
+## 7.7 Use Case: Guru Membuat Progress Report Per Semester
+
+```text
+Guru buka menu Laporan atau detail siswa
+↓
+Pilih siswa
+↓
+Pilih periode akademik / semester
+↓
+Sistem menampilkan rekap sesi, assessment, dan kehadiran
+↓
+Guru menambahkan catatan akhir semester
+↓
+Progress report disimpan atau di-export
+```
+
+Hasil:
+
+- Guru memiliki ringkasan perkembangan belajar siswa.
+- Orang tua dapat menerima laporan yang lebih terstruktur.
+- Target materi berikutnya dapat direncanakan lebih rapi.
+
+---
+
+## 7.8 Use Case: Guru Backup Data
 
 ```text
 Guru buka menu Backup & Restore
@@ -894,12 +1066,13 @@ MVP versi 1 fokus pada fungsi yang paling penting.
 
 ```text
 1. Dashboard
-2. Master data siswa
-3. Jadwal les
-4. Riwayat pertemuan
-5. Pembayaran
-6. Laporan pendapatan sederhana
-7. Backup dan restore manual
+2. Periode akademik / semester
+3. Master data siswa
+4. Jadwal les dan reminder lokal
+5. Riwayat pertemuan dengan assessment
+6. Pembayaran dan reminder invoice
+7. Laporan pendapatan, rekap kehadiran, dan progress report sederhana
+8. Backup dan restore manual
 ```
 
 ## Fitur yang Ditunda
@@ -920,13 +1093,17 @@ MVP versi 1 fokus pada fungsi yang paling penting.
 ```text
 Input siswa
 ↓
+Atur periode akademik
+↓
 Buat jadwal
 ↓
 Tandai sesi selesai
 ↓
+Isi assessment dan absensi
+↓
 Catat pembayaran
 ↓
-Lihat laporan
+Lihat laporan dan progress report
 ↓
 Backup data
 ```
@@ -1179,10 +1356,11 @@ Aplikasi ini sebaiknya dibangun sebagai **Flutter offline-first app** dengan dat
 Fitur paling penting untuk versi awal:
 
 1. Data siswa.
-2. Jadwal les.
-3. Riwayat pertemuan.
-4. Pembayaran.
-5. Laporan pendapatan.
-6. Backup dan restore.
+2. Periode akademik atau semester.
+3. Jadwal les dan reminder.
+4. Riwayat pertemuan, absensi, dan assessment.
+5. Pembayaran dan reminder invoice.
+6. Laporan pendapatan, rekap kehadiran, dan progress report.
+7. Backup dan restore.
 
 Dengan workflow ini, guru private/freelance bisa berpindah dari pencatatan manual ke sistem digital yang lebih rapi, cepat, dan aman.

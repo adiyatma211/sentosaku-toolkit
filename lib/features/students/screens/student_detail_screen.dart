@@ -7,6 +7,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/feedback/app_toast.dart';
 import '../../../core/navigation/app_back_scope.dart';
+import '../../academic/providers/academic_period_provider.dart';
 import '../providers/student_provider.dart';
 import '../widgets/student_status_chip.dart';
 
@@ -19,6 +20,7 @@ class StudentDetailScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final studentState = ref.watch(studentDetailProvider(studentId));
     final submitState = ref.watch(studentFormNotifierProvider);
+    final academicPeriodsState = ref.watch(academicPeriodsProvider);
 
     return AppBackScope(
       fallbackPath: '/students',
@@ -26,6 +28,23 @@ class StudentDetailScreen extends ConsumerWidget {
         appBar: AppBar(
           title: const Text('Detail siswa'),
           actions: [
+            IconButton(
+              onPressed: () => context.go('/students/$studentId/periods'),
+              icon: const Icon(Icons.link_outlined),
+              tooltip: 'Assignment periode',
+            ),
+            IconButton(
+              onPressed: () =>
+                  context.go('/students/$studentId/assessments/review'),
+              icon: const Icon(Icons.fact_check_outlined),
+              tooltip: 'Assessment review',
+            ),
+            IconButton(
+              onPressed: () =>
+                  context.go('/students/$studentId/progress-report'),
+              icon: const Icon(Icons.summarize_outlined),
+              tooltip: 'Progress report',
+            ),
             IconButton(
               onPressed: () => context.go('/students/$studentId/edit'),
               icon: const Icon(Icons.edit),
@@ -41,6 +60,10 @@ class StudentDetailScreen extends ConsumerWidget {
 
             return _StudentDetailContent(
               student: student,
+              academicPeriodLabel: _academicPeriodLabel(
+                student,
+                academicPeriodsState.asData?.value ?? const <AcademicPeriod>[],
+              ),
               isSubmitting: submitState.isLoading,
               onDeactivate: () => _confirmDeactivate(context, ref),
             );
@@ -55,6 +78,23 @@ class StudentDetailScreen extends ConsumerWidget {
         ),
       ),
     );
+  }
+
+  String? _academicPeriodLabel(Student student, List<AcademicPeriod> periods) {
+    final periodId = student.defaultAcademicPeriodId;
+    if (periodId == null) return null;
+
+    AcademicPeriod? match;
+    for (final period in periods) {
+      if (period.id == periodId) {
+        match = period;
+        break;
+      }
+    }
+    if (match == null) {
+      return 'Periode #$periodId';
+    }
+    return match.isActive ? '${match.name} (aktif)' : match.name;
   }
 
   Future<void> _confirmDeactivate(BuildContext context, WidgetRef ref) async {
@@ -102,11 +142,13 @@ class StudentDetailScreen extends ConsumerWidget {
 class _StudentDetailContent extends StatelessWidget {
   const _StudentDetailContent({
     required this.student,
+    required this.academicPeriodLabel,
     required this.isSubmitting,
     required this.onDeactivate,
   });
 
   final Student student;
+  final String? academicPeriodLabel;
   final bool isSubmitting;
   final VoidCallback onDeactivate;
 
@@ -143,6 +185,11 @@ class _StudentDetailContent extends StatelessWidget {
           rows: [
             _InfoItem(Icons.apartment_outlined, 'Sekolah', student.school),
             _InfoItem(Icons.badge_outlined, 'Kelas', student.grade),
+            _InfoItem(
+              Icons.calendar_month_outlined,
+              'Periode default',
+              academicPeriodLabel,
+            ),
             _InfoItem(
               Icons.menu_book_outlined,
               'Mata pelajaran',

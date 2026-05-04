@@ -31,7 +31,11 @@ void main() {
       database: database,
       overrides: [localReminderServiceProvider.overrideWithValue(reminder)],
     );
-    final student = await seedStudent(database);
+    final period = await seedAcademicPeriod(database);
+    final student = await seedStudent(
+      database,
+      defaultAcademicPeriodId: period.id,
+    );
     final subject = await seedSubject(database, studentId: student.id);
     final date = dateOnly(2026, 4, 21);
 
@@ -54,6 +58,7 @@ void main() {
     )..where((t) => t.id.equals(scheduleId))).getSingle();
 
     expect(schedule.scheduleType, ScheduleType.once);
+    expect(schedule.academicPeriodId, period.id);
     expect(reminder.scheduledSchedules, hasLength(1));
     expect(
       container.read(scheduleFormNotifierProvider),
@@ -148,6 +153,49 @@ void main() {
       isA<AsyncData<void>>(),
     );
   });
+
+  test(
+    'reschedule provider cancel reminder lama lalu jadwalkan ulang',
+    () async {
+      final database = TestAppDatabase();
+      final reminder = FakeLocalReminderService();
+      final container = createProviderContainer(
+        database: database,
+        overrides: [localReminderServiceProvider.overrideWithValue(reminder)],
+      );
+      final student = await seedStudent(database);
+      final subject = await seedSubject(database, studentId: student.id);
+      final schedule = await seedSchedule(
+        database,
+        studentId: student.id,
+        subjectId: subject.id,
+        date: dateOnly(2026, 4, 27),
+        reminderEnabled: true,
+      );
+      final newDate = dateOnly(2026, 4, 29);
+
+      await container
+          .read(scheduleFormNotifierProvider.notifier)
+          .reschedule(
+            schedule.id,
+            newDate,
+            timeOn(newDate, 17),
+            timeOn(newDate, 18),
+          );
+
+      final updated = await (database.select(
+        database.schedules,
+      )..where((t) => t.id.equals(schedule.id))).getSingle();
+
+      expect(updated.status, ScheduleStatus.scheduled);
+      expect(updated.lastRescheduledAt, isNotNull);
+      expect(reminder.cancelledScheduleIds, contains(schedule.id));
+      expect(
+        reminder.scheduledSchedules.map((e) => e.id),
+        contains(schedule.id),
+      );
+    },
+  );
 
   test('updateSchedule error menyimpan AsyncError', () async {
     final database = TestAppDatabase();

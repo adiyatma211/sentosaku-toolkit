@@ -1,6 +1,11 @@
 import 'package:go_router/go_router.dart';
 
 import 'app_shell.dart';
+import '../features/academic/screens/academic_period_form_screen.dart';
+import '../features/academic/screens/academic_period_list_screen.dart';
+import '../features/academic/screens/assessment_review_screen.dart';
+import '../features/academic/screens/progress_report_screen.dart';
+import '../features/academic/screens/student_period_assignment_screen.dart';
 import '../features/backup/screens/backup_restore_screen.dart';
 import '../features/dashboard/screens/dashboard_screen.dart';
 import '../features/guide/screens/guide_screen.dart';
@@ -63,6 +68,23 @@ final appRouter = GoRouter(
       ],
     ),
     GoRoute(
+      path: '/academic-periods',
+      name: 'academic-periods',
+      builder: (context, state) => const AcademicPeriodListScreen(),
+    ),
+    GoRoute(
+      path: '/academic-periods/new',
+      name: 'academic-period-new',
+      builder: (context, state) => const AcademicPeriodFormScreen(),
+    ),
+    GoRoute(
+      path: '/academic-periods/:id/edit',
+      name: 'academic-period-edit',
+      builder: (context, state) => AcademicPeriodFormScreen(
+        periodId: int.parse(state.pathParameters['id']!),
+      ),
+    ),
+    GoRoute(
       path: '/students/new',
       name: 'student-new',
       builder: (context, state) => const StudentFormScreen(),
@@ -79,6 +101,33 @@ final appRouter = GoRouter(
       name: 'student-edit',
       builder: (context, state) =>
           StudentFormScreen(studentId: int.parse(state.pathParameters['id']!)),
+    ),
+    GoRoute(
+      path: '/students/:id/periods',
+      name: 'student-periods',
+      builder: (context, state) => StudentPeriodAssignmentScreen(
+        studentId: int.parse(state.pathParameters['id']!),
+      ),
+    ),
+    GoRoute(
+      path: '/students/:id/assessments/review',
+      name: 'student-assessment-review',
+      builder: (context, state) => AssessmentReviewScreen(
+        studentId: int.parse(state.pathParameters['id']!),
+        initialAcademicPeriodId: int.tryParse(
+          state.uri.queryParameters['periodId'] ?? '',
+        ),
+      ),
+    ),
+    GoRoute(
+      path: '/students/:id/progress-report',
+      name: 'student-progress-report',
+      builder: (context, state) => ProgressReportScreen(
+        studentId: int.parse(state.pathParameters['id']!),
+        initialAcademicPeriodId: int.tryParse(
+          state.uri.queryParameters['periodId'] ?? '',
+        ),
+      ),
     ),
     GoRoute(
       path: '/schedules/new',

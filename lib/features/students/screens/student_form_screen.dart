@@ -6,6 +6,7 @@ import '../../../core/constants/app_constants.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/feedback/app_toast.dart';
 import '../../../core/navigation/app_back_scope.dart';
+import '../../academic/providers/academic_period_provider.dart';
 import '../data/student_repository.dart';
 import '../providers/student_provider.dart';
 
@@ -34,6 +35,7 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
 
   String _rateType = RateType.perSession;
   String _status = StudentStatus.active;
+  int? _defaultAcademicPeriodId;
   bool _didLoadStudent = false;
 
   @override
@@ -53,6 +55,7 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
   @override
   Widget build(BuildContext context) {
     final submitState = ref.watch(studentFormNotifierProvider);
+    final academicPeriodsState = ref.watch(academicPeriodsProvider);
     final detailState = widget.studentId == null
         ? null
         : ref.watch(studentDetailProvider(widget.studentId!));
@@ -69,7 +72,11 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
             );
           }
           _loadStudent(student);
-          return _buildForm(context, submitState.isLoading);
+          return _buildForm(
+            context,
+            submitState.isLoading,
+            academicPeriodsState,
+          );
         },
         loading: () => AppBackScope(
           fallbackPath: _fallbackPath,
@@ -87,10 +94,21 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
       );
     }
 
-    return _buildForm(context, submitState.isLoading);
+    return _buildForm(context, submitState.isLoading, academicPeriodsState);
   }
 
-  Widget _buildForm(BuildContext context, bool isSubmitting) {
+  Widget _buildForm(
+    BuildContext context,
+    bool isSubmitting,
+    AsyncValue<List<AcademicPeriod>> academicPeriodsState,
+  ) {
+    final academicPeriods =
+        academicPeriodsState.asData?.value ?? const <AcademicPeriod>[];
+    final academicPeriodItems = _academicPeriodItems(academicPeriods);
+    final selectedAcademicPeriodId = _selectedAcademicPeriodId(
+      academicPeriodItems,
+    );
+
     return AppBackScope(
       fallbackPath: _fallbackPath,
       child: Scaffold(
@@ -145,6 +163,27 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
                     textInputAction: TextInputAction.next,
                     validator: _required('Mata pelajaran utama wajib diisi'),
                   ),
+                  if (academicPeriodsState.isLoading) ...[
+                    const SizedBox(height: 12),
+                    const LinearProgressIndicator(minHeight: 2),
+                  ] else if (academicPeriodItems.isNotEmpty) ...[
+                    const SizedBox(height: 12),
+                    DropdownButtonFormField<int?>(
+                      value: selectedAcademicPeriodId,
+                      decoration: const InputDecoration(
+                        labelText: 'Periode akademik default',
+                        prefixIcon: Icon(Icons.calendar_month_outlined),
+                        helperText:
+                            'Opsional. Jadwal Sprint 03 akan membaca default ini bila tersedia.',
+                      ),
+                      items: academicPeriodItems,
+                      onChanged: isSubmitting
+                          ? null
+                          : (value) => setState(
+                              () => _defaultAcademicPeriodId = value,
+                            ),
+                    ),
+                  ],
                 ],
               ),
               const SizedBox(height: 16),
@@ -315,6 +354,7 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
     _noteController.text = student.note ?? '';
     _rateType = student.rateType;
     _status = student.status;
+    _defaultAcademicPeriodId = student.defaultAcademicPeriodId;
   }
 
   Future<void> _submit() async {
@@ -329,6 +369,7 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
       school: _schoolController.text,
       grade: _gradeController.text,
       defaultSubject: _defaultSubjectController.text,
+      defaultAcademicPeriodId: _defaultAcademicPeriodId,
       rateType: _rateType,
       rateAmount: amount,
       status: _status,
@@ -392,6 +433,43 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
       return 'Nominal tarif harus lebih dari 0';
     }
     return null;
+  }
+
+  List<DropdownMenuItem<int?>> _academicPeriodItems(
+    List<AcademicPeriod> periods,
+  ) {
+    final items = <DropdownMenuItem<int?>>[
+      const DropdownMenuItem<int?>(value: null, child: Text('Belum diatur')),
+      ...periods.map(
+        (period) => DropdownMenuItem<int?>(
+          value: period.id,
+          child: Text(_academicPeriodLabel(period)),
+        ),
+      ),
+    ];
+
+    if (_defaultAcademicPeriodId != null &&
+        periods.every((period) => period.id != _defaultAcademicPeriodId)) {
+      items.add(
+        DropdownMenuItem<int?>(
+          value: _defaultAcademicPeriodId,
+          child: const Text('Periode tersimpan tidak tersedia'),
+        ),
+      );
+    }
+
+    return items;
+  }
+
+  int? _selectedAcademicPeriodId(List<DropdownMenuItem<int?>> items) {
+    return items.any((item) => item.value == _defaultAcademicPeriodId)
+        ? _defaultAcademicPeriodId
+        : null;
+  }
+
+  String _academicPeriodLabel(AcademicPeriod period) {
+    final suffix = period.isActive ? ' (aktif)' : '';
+    return '${period.name}$suffix';
   }
 }
 

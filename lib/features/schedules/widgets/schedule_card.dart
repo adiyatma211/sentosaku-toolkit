@@ -22,6 +22,7 @@ class ScheduleCard extends StatelessWidget {
     final locationText = address == null || address.isEmpty
         ? 'Lokasi belum diisi'
         : address;
+    final academicPeriodName = detail.academicPeriod?.name.trim();
     final accentColor = _statusColor(context, schedule.status);
 
     return Card(
@@ -102,9 +103,20 @@ class ScheduleCard extends StatelessWidget {
                                 ? Icons.notifications_active_outlined
                                 : Icons.notifications_off_outlined,
                             label: schedule.reminderEnabled
-                                ? 'Reminder aktif'
+                                ? 'Reminder ${schedule.reminderOffsetMinutes} menit'
                                 : 'Tanpa reminder',
                           ),
+                          if (academicPeriodName != null &&
+                              academicPeriodName.isNotEmpty)
+                            _MetaPill(
+                              icon: Icons.school_outlined,
+                              label: academicPeriodName,
+                            ),
+                          if (schedule.lastRescheduledAt != null)
+                            const _MetaPill(
+                              icon: Icons.swap_horiz_outlined,
+                              label: 'Baru di-reschedule',
+                            ),
                         ],
                       ),
                     ],

@@ -164,6 +164,15 @@ class ReportScreen extends ConsumerWidget {
                       physics: const NeverScrollableScrollPhysics(),
                       children: [
                         _ReportMenuCard(
+                          title: 'Periode Akademik',
+                          subtitle:
+                              'Kelola semester, assignment siswa, dan baseline laporan.',
+                          badge: 'Academic',
+                          icon: Icons.school_outlined,
+                          accentColor: colorScheme.secondary,
+                          path: '/academic-periods',
+                        ),
+                        _ReportMenuCard(
                           title: 'Pendapatan',
                           subtitle: 'Pembayaran masuk dan tren pemasukan.',
                           badge: 'Income',

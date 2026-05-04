@@ -15,6 +15,7 @@ Future<Student> seedStudent(
   String rateType = RateType.perSession,
   int rateAmount = 150000,
   String? whatsapp = '08123456789',
+  int? defaultAcademicPeriodId,
 }) async {
   final now = DateTime(2026, 1, 1, 8);
   final id = await database
@@ -23,6 +24,7 @@ Future<Student> seedStudent(
         StudentsCompanion.insert(
           name: name,
           whatsapp: Value(whatsapp),
+          defaultAcademicPeriodId: Value(defaultAcademicPeriodId),
           rateType: Value(rateType),
           rateAmount: Value(rateAmount),
           status: const Value(StudentStatus.active),
@@ -32,6 +34,35 @@ Future<Student> seedStudent(
       );
   return (database.select(
     database.students,
+  )..where((t) => t.id.equals(id))).getSingle();
+}
+
+Future<AcademicPeriod> seedAcademicPeriod(
+  AppDatabase database, {
+  String name = 'Semester Genap 2025/2026',
+  String periodType = AcademicPeriodType.semester,
+  DateTime? startDate,
+  DateTime? endDate,
+  bool isActive = true,
+  String? note,
+}) async {
+  final now = DateTime(2026, 1, 1, 8);
+  final id = await database
+      .into(database.academicPeriods)
+      .insert(
+        AcademicPeriodsCompanion.insert(
+          name: name,
+          periodType: Value(periodType),
+          startDate: startDate ?? DateTime(2026, 1, 1),
+          endDate: endDate ?? DateTime(2026, 6, 30),
+          isActive: Value(isActive),
+          note: Value(note),
+          createdAt: Value(now),
+          updatedAt: Value(now),
+        ),
+      );
+  return (database.select(
+    database.academicPeriods,
   )..where((t) => t.id.equals(id))).getSingle();
 }
 
@@ -58,17 +89,46 @@ Future<Subject> seedSubject(
   )..where((t) => t.id.equals(id))).getSingle();
 }
 
+Future<StudentPeriod> seedStudentPeriod(
+  AppDatabase database, {
+  required int studentId,
+  required int academicPeriodId,
+  DateTime? enrolledAt,
+  String status = StudentPeriodStatus.active,
+  String? note,
+}) async {
+  final now = DateTime(2026, 1, 1, 8);
+  final id = await database
+      .into(database.studentPeriods)
+      .insert(
+        StudentPeriodsCompanion.insert(
+          studentId: studentId,
+          academicPeriodId: academicPeriodId,
+          enrolledAt: Value(enrolledAt ?? now),
+          status: Value(status),
+          note: Value(note),
+          createdAt: Value(now),
+          updatedAt: Value(now),
+        ),
+      );
+  return (database.select(
+    database.studentPeriods,
+  )..where((t) => t.id.equals(id))).getSingle();
+}
+
 Future<Schedule> seedSchedule(
   AppDatabase database, {
   required int studentId,
   required int subjectId,
   required DateTime date,
+  int? academicPeriodId,
   DateTime? startTime,
   DateTime? endTime,
   String status = ScheduleStatus.scheduled,
   String scheduleType = ScheduleType.once,
   String? recurrenceGroupId,
   bool reminderEnabled = false,
+  int reminderOffsetMinutes = 60,
   String? note,
 }) async {
   final now = DateTime(2026, 1, 1, 8);
@@ -80,6 +140,7 @@ Future<Schedule> seedSchedule(
         SchedulesCompanion.insert(
           studentId: studentId,
           subjectId: subjectId,
+          academicPeriodId: Value(academicPeriodId),
           date: date,
           startTime: start,
           endTime: end,
@@ -87,6 +148,7 @@ Future<Schedule> seedSchedule(
           status: Value(status),
           recurrenceGroupId: Value(recurrenceGroupId),
           reminderEnabled: Value(reminderEnabled),
+          reminderOffsetMinutes: Value(reminderOffsetMinutes),
           note: Value(note),
           createdAt: Value(now),
           updatedAt: Value(now),
@@ -103,10 +165,12 @@ Future<Session> seedSession(
   required int studentId,
   required int subjectId,
   required DateTime sessionDate,
+  int? academicPeriodId,
   DateTime? startTime,
   DateTime? endTime,
   String attendanceStatus = AttendanceStatus.present,
   int feeAmount = 150000,
+  bool isAttendanceSource = true,
   int? invoiceId,
 }) async {
   final now = DateTime(2026, 1, 1, 8);
@@ -119,11 +183,13 @@ Future<Session> seedSession(
           scheduleId: Value(scheduleId),
           studentId: studentId,
           subjectId: subjectId,
+          academicPeriodId: Value(academicPeriodId),
           sessionDate: Value(sessionDate),
           startTime: Value(start),
           endTime: Value(end),
           attendanceStatus: Value(attendanceStatus),
           feeAmount: Value(feeAmount),
+          isAttendanceSource: Value(isAttendanceSource),
           invoiceId: Value(invoiceId),
           createdAt: Value(now),
           updatedAt: Value(now),
@@ -131,6 +197,45 @@ Future<Session> seedSession(
       );
   return (database.select(
     database.sessions,
+  )..where((t) => t.id.equals(id))).getSingle();
+}
+
+Future<Assessment> seedAssessment(
+  AppDatabase database, {
+  int? sessionId,
+  required int studentId,
+  int? academicPeriodId,
+  String assessmentType = AssessmentType.session,
+  String? pemahamanMateri,
+  String? keaktifanTanyaJawab,
+  String? ketepatanKerapianTugas,
+  String? konsistensiKehadiranFokus,
+  String? targetMateriDrilling,
+  String? sikapBelajarRespon,
+  String? summaryNote,
+}) async {
+  final now = DateTime(2026, 1, 1, 8);
+  final id = await database
+      .into(database.assessments)
+      .insert(
+        AssessmentsCompanion.insert(
+          sessionId: Value(sessionId),
+          studentId: studentId,
+          academicPeriodId: Value(academicPeriodId),
+          assessmentType: Value(assessmentType),
+          pemahamanMateri: Value(pemahamanMateri),
+          keaktifanTanyaJawab: Value(keaktifanTanyaJawab),
+          ketepatanKerapianTugas: Value(ketepatanKerapianTugas),
+          konsistensiKehadiranFokus: Value(konsistensiKehadiranFokus),
+          targetMateriDrilling: Value(targetMateriDrilling),
+          sikapBelajarRespon: Value(sikapBelajarRespon),
+          summaryNote: Value(summaryNote),
+          createdAt: Value(now),
+          updatedAt: Value(now),
+        ),
+      );
+  return (database.select(
+    database.assessments,
   )..where((t) => t.id.equals(id))).getSingle();
 }
 

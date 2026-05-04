@@ -120,6 +120,12 @@ void main() {
       subjectId: subject.id,
       sessionDate: schedule.date,
     );
+    await seedAssessment(
+      database,
+      sessionId: session.id,
+      studentId: student.id,
+      pemahamanMateri: 'Baik',
+    );
 
     final detail = await container
         .read(sessionRepositoryProvider)
@@ -130,5 +136,6 @@ void main() {
     expect(detail!.session.id, session.id);
     expect(detail.student.name, 'Bima');
     expect(detail.subject.name, 'Kimia');
+    expect(detail.assessment?.pemahamanMateri, 'Baik');
   });
 }

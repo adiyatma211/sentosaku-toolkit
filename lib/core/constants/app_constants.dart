@@ -45,3 +45,46 @@ abstract final class PaymentMethod {
   static const ewallet = 'ewallet';
   static const other = 'other';
 }
+
+abstract final class AcademicPeriodType {
+  static const semester = 'semester';
+  static const custom = 'custom';
+}
+
+abstract final class StudentPeriodStatus {
+  static const active = 'active';
+  static const completed = 'completed';
+  static const inactive = 'inactive';
+}
+
+abstract final class AssessmentType {
+  static const session = 'session';
+  static const reviewCycle = 'review_cycle';
+}
+
+abstract final class ProgressReportType {
+  static const periodic = 'periodic';
+  static const manual = 'manual';
+}
+
+abstract final class ProgressReportStatus {
+  static const draft = 'draft';
+  static const finalized = 'finalized';
+  static const exported = 'exported';
+}
+
+abstract final class ReminderType {
+  static const scheduleSession = 'schedule_session';
+  static const invoiceDue = 'invoice_due';
+}
+
+abstract final class ReminderChannel {
+  static const localNotification = 'local_notification';
+}
+
+abstract final class ReminderStatus {
+  static const scheduled = 'scheduled';
+  static const triggered = 'triggered';
+  static const cancelled = 'cancelled';
+  static const failed = 'failed';
+}

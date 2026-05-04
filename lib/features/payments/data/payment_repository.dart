@@ -3,6 +3,27 @@ import 'package:drift/drift.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/database/app_database.dart';
 import '../../../core/logging/app_logger.dart';
+import '../../../core/reminders/invoice_reminder_service.dart';
+
+class InvoiceReminderInfo {
+  const InvoiceReminderInfo({
+    required this.stage,
+    required this.label,
+    this.dueDate,
+    this.lastRemindedAt,
+    this.daysUntilDue,
+  });
+
+  final String stage;
+  final String label;
+  final DateTime? dueDate;
+  final DateTime? lastRemindedAt;
+  final int? daysUntilDue;
+
+  bool get needsFollowUp =>
+      stage == InvoiceReminderStage.dueSoon ||
+      stage == InvoiceReminderStage.overdue;
+}
 
 class InvoiceDetail {
   const InvoiceDetail({
@@ -16,6 +37,9 @@ class InvoiceDetail {
   final Session? session;
 
   int get remainingAmount => invoice.amount - invoice.paidAmount;
+
+  InvoiceReminderInfo get reminderInfo =>
+      PaymentRepository.invoiceReminderInfoFor(invoice);
 }
 
 typedef InvoiceListItem = InvoiceDetail;
@@ -37,15 +61,114 @@ class PaymentFormData {
 }
 
 class PaymentRepository {
-  const PaymentRepository(this._database, this._logger);
+  const PaymentRepository(
+    this._database,
+    this._logger, {
+    InvoiceReminderService? invoiceReminderService,
+  }) : _invoiceReminderService = invoiceReminderService;
 
   final AppDatabase _database;
   final AppLogger _logger;
+  final InvoiceReminderService? _invoiceReminderService;
+
+  static InvoiceReminderInfo invoiceReminderInfoFor(Invoice invoice) {
+    final dueDate = invoice.dueDate;
+    if (invoice.status == InvoiceStatus.paid ||
+        invoice.status == InvoiceStatus.cancelled) {
+      return InvoiceReminderInfo(
+        stage: InvoiceReminderStage.resolved,
+        label: 'Reminder selesai',
+        dueDate: dueDate,
+        lastRemindedAt: invoice.lastRemindedAt,
+      );
+    }
+    if (dueDate == null) {
+      return InvoiceReminderInfo(
+        stage: InvoiceReminderStage.none,
+        label: 'Belum ada jatuh tempo',
+      );
+    }
+
+    final today = _dateOnly(DateTime.now());
+    final normalizedDueDate = _dateOnly(dueDate);
+    final daysUntilDue = normalizedDueDate.difference(today).inDays;
+    if (daysUntilDue < 0) {
+      return InvoiceReminderInfo(
+        stage: InvoiceReminderStage.overdue,
+        label: 'Lewat jatuh tempo ${daysUntilDue.abs()} hari',
+        dueDate: dueDate,
+        lastRemindedAt: invoice.lastRemindedAt,
+        daysUntilDue: daysUntilDue,
+      );
+    }
+    if (daysUntilDue <= InvoiceReminderService.dueSoonWindowDays) {
+      final label = switch (daysUntilDue) {
+        0 => 'Jatuh tempo hari ini',
+        1 => 'Jatuh tempo besok',
+        _ => 'Jatuh tempo $daysUntilDue hari lagi',
+      };
+      return InvoiceReminderInfo(
+        stage: InvoiceReminderStage.dueSoon,
+        label: label,
+        dueDate: dueDate,
+        lastRemindedAt: invoice.lastRemindedAt,
+        daysUntilDue: daysUntilDue,
+      );
+    }
+    return InvoiceReminderInfo(
+      stage: InvoiceReminderStage.scheduled,
+      label:
+          'Reminder aktif ${InvoiceReminderService.dueSoonWindowDays} hari sebelum jatuh tempo',
+      dueDate: dueDate,
+      lastRemindedAt: invoice.lastRemindedAt,
+      daysUntilDue: daysUntilDue,
+    );
+  }
 
   Stream<List<InvoiceListItem>> watchUnpaidInvoices() {
     return watchInvoices(
       statusFilter: const [InvoiceStatus.unpaid, InvoiceStatus.partial],
     );
+  }
+
+  Stream<List<InvoiceListItem>> watchDueSoonInvoices() {
+    final today = _dateOnly(DateTime.now());
+    final end = today.add(
+      const Duration(days: InvoiceReminderService.dueSoonWindowDays + 1),
+    );
+    final query = _joinedInvoiceQuery()
+      ..where(
+        _database.invoices.status.isIn([
+          InvoiceStatus.unpaid,
+          InvoiceStatus.partial,
+        ]),
+      )
+      ..where(_database.invoices.dueDate.isNotNull())
+      ..where(_database.invoices.dueDate.isBiggerOrEqualValue(today))
+      ..where(_database.invoices.dueDate.isSmallerThanValue(end))
+      ..orderBy([
+        OrderingTerm.asc(_database.invoices.dueDate),
+        OrderingTerm.desc(_database.invoices.createdAt),
+      ]);
+    return query.watch().map(_mapRows);
+  }
+
+  Stream<List<InvoiceListItem>> watchOverdueInvoices() {
+    final today = _dateOnly(DateTime.now());
+    final query = _joinedInvoiceQuery()
+      ..where(
+        _database.invoices.status.isIn([
+          InvoiceStatus.unpaid,
+          InvoiceStatus.partial,
+        ]),
+      )
+      ..where(_database.invoices.dueDate.isNotNull())
+      ..where(_database.invoices.dueDate.isSmallerThanValue(today))
+      ..orderBy([
+        OrderingTerm.asc(_database.invoices.dueDate),
+        OrderingTerm.desc(_database.invoices.createdAt),
+      ]);
+    return query.watch().map(_mapRows);
   }
 
   Stream<List<InvoiceListItem>> watchInvoices({List<String>? statusFilter}) {
@@ -163,6 +286,7 @@ class PaymentRepository {
 
         return paymentId;
       });
+      await _invoiceReminderService?.syncInvoiceReminderById(data.invoiceId);
       _logger.logTransactionSuccess(action, {
         ...logData,
         'paymentId': paymentId,
@@ -247,5 +371,9 @@ class PaymentRepository {
   String? _blankToNull(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
+  }
+
+  static DateTime _dateOnly(DateTime value) {
+    return DateTime(value.year, value.month, value.day);
   }
 }
