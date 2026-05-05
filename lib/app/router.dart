@@ -12,6 +12,7 @@ import '../features/guide/screens/guide_screen.dart';
 import '../features/payments/screens/invoice_detail_screen.dart';
 import '../features/payments/screens/invoice_list_screen.dart';
 import '../features/payments/screens/payment_form_screen.dart';
+import '../features/reports/screens/attendance_report_screen.dart';
 import '../features/reports/screens/income_report_screen.dart';
 import '../features/reports/screens/report_screen.dart';
 import '../features/reports/screens/student_report_screen.dart';
@@ -195,6 +196,11 @@ final appRouter = GoRouter(
       path: '/reports/students',
       name: 'reports-students',
       builder: (context, state) => const StudentReportScreen(),
+    ),
+    GoRoute(
+      path: '/reports/attendance',
+      name: 'reports-attendance',
+      builder: (context, state) => const AttendanceReportScreen(),
     ),
     GoRoute(
       path: '/backup',

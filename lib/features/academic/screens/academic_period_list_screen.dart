@@ -15,9 +15,15 @@ class AcademicPeriodListScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final periodsState = ref.watch(academicPeriodsProvider);
     return AppBackScope(
-      fallbackPath: '/reports',
+      fallbackPath: '/dashboard',
       child: Scaffold(
-        appBar: AppBar(title: const Text('Periode akademik')),
+        appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/dashboard'),
+          ),
+          title: const Text('Periode akademik'),
+        ),
         floatingActionButton: FloatingActionButton.extended(
           onPressed: () => context.go('/academic-periods/new'),
           icon: const Icon(Icons.add),

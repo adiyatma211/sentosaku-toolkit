@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:csv/csv.dart';
+import 'package:excel/excel.dart';
 import 'package:intl/intl.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
@@ -78,8 +79,68 @@ class ExportService {
     }
   }
 
-  Future<File> exportExcel(ExportReportData data) {
-    return exportCsv(data);
+  Future<File> exportExcel(ExportReportData data) async {
+    const action = 'reports.exportExcel';
+    final logData = _exportLogData(data, 'xlsx');
+    _logger.logTransactionStart(action, logData);
+    try {
+      final workbook = Excel.createExcel();
+      const sheetName = 'Laporan';
+      final sheet = workbook[sheetName];
+      final defaultSheet = workbook.getDefaultSheet();
+      if (defaultSheet != null && defaultSheet != sheetName) {
+        workbook.delete(defaultSheet);
+      }
+
+      final generatedAt = DateFormat(
+        'yyyy-MM-dd HH:mm:ss',
+      ).format(data.generatedAt);
+      final headerStyle = CellStyle(bold: true);
+      final metadataStyle = CellStyle(bold: true);
+
+      _appendRow(sheet, ['Judul', data.title]);
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 0))
+          .cellStyle = metadataStyle;
+      _appendRow(sheet, ['Periode', data.filterLabel]);
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 1))
+          .cellStyle = metadataStyle;
+      _appendRow(sheet, ['Dibuat', generatedAt]);
+      sheet
+          .cell(CellIndex.indexByColumnRow(columnIndex: 0, rowIndex: 2))
+          .cellStyle = metadataStyle;
+      _appendRow(sheet, const []);
+      _appendRow(sheet, data.columns);
+      for (var column = 0; column < data.columns.length; column++) {
+        sheet
+            .cell(CellIndex.indexByColumnRow(columnIndex: column, rowIndex: 4))
+            .cellStyle = headerStyle;
+      }
+      for (final row in data.rows) {
+        _appendRow(sheet, row);
+      }
+
+      for (var column = 0; column < data.columns.length; column++) {
+        sheet.setColumnAutoFit(column);
+      }
+
+      final bytes = workbook.encode();
+      if (bytes == null || bytes.isEmpty) {
+        throw StateError('Gagal membuat file Excel.');
+      }
+      final file = await _exportFile(data, 'xlsx');
+      await file.writeAsBytes(bytes, flush: true);
+      _logger.logTransactionSuccess(action, {...logData, 'path': file.path});
+      return file;
+    } catch (error, stackTrace) {
+      _logger.logTransactionError(action, error, stackTrace, logData);
+      rethrow;
+    }
+  }
+
+  void _appendRow(Sheet sheet, List<String> row) {
+    sheet.appendRow(row.map((value) => TextCellValue(value)).toList());
   }
 
   Future<File> _exportFile(ExportReportData data, String extension) async {

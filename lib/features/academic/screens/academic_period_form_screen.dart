@@ -71,9 +71,13 @@ class _AcademicPeriodFormScreenState
   Widget _buildScaffold(BuildContext context, bool isSubmitting) {
     final dateFormat = DateFormat('d MMM yyyy');
     return AppBackScope(
-      fallbackPath: '/academic-periods',
+      fallbackPath: '/dashboard',
       child: Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            icon: const Icon(Icons.arrow_back),
+            onPressed: () => context.go('/dashboard'),
+          ),
           title: Text(
             widget.isEdit ? 'Edit periode akademik' : 'Tambah periode akademik',
           ),
@@ -112,20 +116,22 @@ class _AcademicPeriodFormScreenState
                       ),
               ),
               const SizedBox(height: 12),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.calendar_month_outlined),
-                title: const Text('Tanggal mulai'),
-                subtitle: Text(dateFormat.format(_startDate)),
-                onTap: isSubmitting ? null : () => _pickDate(isStart: true),
+              _buildDateField(
+                label: 'Tanggal mulai',
+                value: dateFormat.format(_startDate),
+                icon: Icons.calendar_month_outlined,
+                enabled: !isSubmitting,
+                onTap: () => _pickDate(isStart: true),
               ),
-              ListTile(
-                contentPadding: EdgeInsets.zero,
-                leading: const Icon(Icons.event_available_outlined),
-                title: const Text('Tanggal selesai'),
-                subtitle: Text(dateFormat.format(_endDate)),
-                onTap: isSubmitting ? null : () => _pickDate(isStart: false),
+              const SizedBox(height: 12),
+              _buildDateField(
+                label: 'Tanggal selesai',
+                value: dateFormat.format(_endDate),
+                icon: Icons.event_available_outlined,
+                enabled: !isSubmitting,
+                onTap: () => _pickDate(isStart: false),
               ),
+              const SizedBox(height: 4),
               SwitchListTile(
                 contentPadding: EdgeInsets.zero,
                 title: const Text('Tandai sebagai periode aktif'),
@@ -163,6 +169,28 @@ class _AcademicPeriodFormScreenState
     _endDate = period.endDate;
     _periodType = period.periodType;
     _isActive = period.isActive;
+  }
+
+  Widget _buildDateField({
+    required String label,
+    required String value,
+    required IconData icon,
+    required bool enabled,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: enabled ? onTap : null,
+      borderRadius: BorderRadius.circular(4),
+      child: InputDecorator(
+        decoration: InputDecoration(
+          labelText: label,
+          prefixIcon: Icon(icon),
+          suffixIcon: const Icon(Icons.arrow_drop_down),
+          enabled: enabled,
+        ),
+        child: Text(value),
+      ),
+    );
   }
 
   Future<void> _pickDate({required bool isStart}) async {

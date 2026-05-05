@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 
+import '../../academic/providers/academic_period_provider.dart';
 import '../data/report_models.dart';
 import '../providers/report_provider.dart';
 
@@ -11,6 +12,7 @@ class ReportFilterBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final filter = ref.watch(reportFilterProvider);
+    final periodsState = ref.watch(academicPeriodsProvider);
     final notifier = ref.read(reportFilterProvider.notifier);
     final dateFormat = DateFormat('dd MMM yyyy', 'id_ID');
     final endInclusive = filter.endDate.subtract(const Duration(days: 1));
@@ -81,6 +83,47 @@ class ReportFilterBar extends ConsumerWidget {
                   selected: filter.filterType == ReportFilterType.month,
                   onSelected: (_) => notifier.setThisMonth(),
                 ),
+                periodsState.maybeWhen(
+                  data: (periods) => PopupMenuButton<int>(
+                    enabled: periods.isNotEmpty,
+                    tooltip: 'Pilih periode akademik',
+                    onSelected: (id) {
+                      final period = periods.firstWhere(
+                        (period) => period.id == id,
+                      );
+                      notifier.setAcademicPeriod(
+                        id: period.id,
+                        name: period.name,
+                        startDate: period.startDate,
+                        endDate: period.endDate,
+                      );
+                    },
+                    itemBuilder: (context) => periods
+                        .map(
+                          (period) => PopupMenuItem(
+                            value: period.id,
+                            child: Text(period.name),
+                          ),
+                        )
+                        .toList(growable: false),
+                    child: Chip(
+                      avatar: const Icon(Icons.school_outlined, size: 18),
+                      label: Text(
+                        filter.filterType == ReportFilterType.academicPeriod
+                            ? filter.academicPeriodName ?? 'Periode akademik'
+                            : 'Semester/periode',
+                      ),
+                      backgroundColor:
+                          filter.filterType == ReportFilterType.academicPeriod
+                          ? colorScheme.secondaryContainer
+                          : null,
+                    ),
+                  ),
+                  orElse: () => const Chip(
+                    avatar: Icon(Icons.school_outlined, size: 18),
+                    label: Text('Semester/periode'),
+                  ),
+                ),
                 ActionChip(
                   avatar: const Icon(Icons.date_range_rounded, size: 18),
                   label: const Text('Custom'),
@@ -89,6 +132,14 @@ class ReportFilterBar extends ConsumerWidget {
               ],
             ),
             const SizedBox(height: 14),
+            SwitchListTile.adaptive(
+              contentPadding: EdgeInsets.zero,
+              dense: true,
+              title: const Text('Sertakan rekap kehadiran untuk export'),
+              value: filter.includeAttendanceRecap,
+              onChanged: notifier.setIncludeAttendanceRecap,
+            ),
+            const SizedBox(height: 8),
             Container(
               width: double.infinity,
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),

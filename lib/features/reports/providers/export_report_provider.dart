@@ -51,5 +51,19 @@ class ExportReportNotifier extends AsyncNotifier<File?> {
     }
   }
 
-  Future<File> exportExcel() => exportCsv();
+  Future<File> exportExcel() async {
+    state = const AsyncLoading();
+    try {
+      final filter = ref.read(reportFilterProvider);
+      final data = await ref
+          .read(reportRepositoryProvider)
+          .getExportData(filter);
+      final file = await ref.read(exportServiceProvider).exportExcel(data);
+      state = AsyncData(file);
+      return file;
+    } catch (error, stackTrace) {
+      state = AsyncError(error, stackTrace);
+      Error.throwWithStackTrace(error, stackTrace);
+    }
+  }
 }

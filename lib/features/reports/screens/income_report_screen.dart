@@ -45,8 +45,8 @@ class IncomeReportScreen extends ConsumerWidget {
                   child: Text('Export PDF'),
                 ),
                 PopupMenuItem(
-                  value: _ExportType.csv,
-                  child: Text('Export CSV'),
+                  value: _ExportType.excel,
+                  child: Text('Export Excel (.xlsx)'),
                 ),
               ],
             ),
@@ -137,7 +137,7 @@ class IncomeReportScreen extends ConsumerWidget {
       final notifier = ref.read(exportReportNotifierProvider.notifier);
       final file = switch (type) {
         _ExportType.pdf => await notifier.exportPdf(),
-        _ExportType.csv => await notifier.exportCsv(),
+        _ExportType.excel => await notifier.exportExcel(),
       };
       if (!context.mounted) return;
       AppToast.success(context, 'Export berhasil', details: file.path);
@@ -148,7 +148,7 @@ class IncomeReportScreen extends ConsumerWidget {
   }
 }
 
-enum _ExportType { pdf, csv }
+enum _ExportType { pdf, excel }
 
 class _PaymentRowCard extends StatelessWidget {
   const _PaymentRowCard({

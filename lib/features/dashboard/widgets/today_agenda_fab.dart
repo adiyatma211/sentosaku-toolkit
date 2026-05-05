@@ -25,11 +25,12 @@ class TodayAgendaFab extends StatelessWidget {
         children: [
           SizedBox.square(
             dimension: 56,
-            child: FloatingActionButton(
-              tooltip: 'Absen Hari Ini',
-              onPressed: onPressed,
-              child: const Icon(Icons.add_rounded, size: 28),
-            ),
+             child: FloatingActionButton(
+               heroTag: null,
+               tooltip: 'Absen Hari Ini',
+               onPressed: onPressed,
+               child: const Icon(Icons.add_rounded, size: 28),
+             ),
           ),
           const SizedBox(height: 3),
           Text(

@@ -87,7 +87,13 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
         error: (error, stackTrace) => AppBackScope(
           fallbackPath: _fallbackPath,
           child: Scaffold(
-            appBar: AppBar(title: const Text('Edit siswa')),
+            appBar: AppBar(
+              leading: IconButton(
+                onPressed: () => _handleBackNavigation(context),
+                icon: const Icon(Icons.arrow_back),
+              ),
+              title: const Text('Edit siswa'),
+            ),
             body: Center(child: Text('Gagal memuat siswa: $error')),
           ),
         ),
@@ -95,6 +101,44 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
     }
 
     return _buildForm(context, submitState.isLoading, academicPeriodsState);
+  }
+
+  InputDecoration _fieldDecoration({
+    required String label,
+    required IconData icon,
+    String? helperText,
+  }) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final borderRadius = BorderRadius.circular(16);
+
+    return InputDecoration(
+      labelText: label,
+      helperText: helperText,
+      filled: true,
+      fillColor: colorScheme.surfaceContainerHighest.withValues(alpha: .3),
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
+      prefixIcon: Icon(icon),
+      border: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: BorderSide(color: colorScheme.outlineVariant),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: .7)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: BorderSide(color: colorScheme.primary, width: 1.6),
+      ),
+      errorBorder: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: BorderSide(color: colorScheme.error),
+      ),
+      focusedErrorBorder: OutlineInputBorder(
+        borderRadius: borderRadius,
+        borderSide: BorderSide(color: colorScheme.error, width: 1.6),
+      ),
+    );
   }
 
   Widget _buildForm(
@@ -113,6 +157,10 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
       fallbackPath: _fallbackPath,
       child: Scaffold(
         appBar: AppBar(
+          leading: IconButton(
+            onPressed: () => _handleBackNavigation(context),
+            icon: const Icon(Icons.arrow_back),
+          ),
           title: Text(widget.isEdit ? 'Edit siswa' : 'Tambah siswa'),
         ),
         body: Form(
@@ -125,12 +173,14 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
               _FormSection(
                 title: 'Data Murid',
                 icon: Icons.school_outlined,
+                description:
+                    'Informasi utama yang dipakai di profil dan jadwal.',
                 children: [
                   TextFormField(
                     controller: _nameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama siswa *',
-                      prefixIcon: Icon(Icons.person_outline),
+                    decoration: _fieldDecoration(
+                      label: 'Nama siswa *',
+                      icon: Icons.person_outline,
                     ),
                     textInputAction: TextInputAction.next,
                     validator: _required('Nama siswa wajib diisi'),
@@ -138,27 +188,29 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _schoolController,
-                    decoration: const InputDecoration(
-                      labelText: 'Sekolah',
-                      prefixIcon: Icon(Icons.apartment_outlined),
+                    decoration: _fieldDecoration(
+                      label: 'Sekolah',
+                      icon: Icons.apartment_outlined,
                     ),
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _gradeController,
-                    decoration: const InputDecoration(
-                      labelText: 'Kelas',
-                      prefixIcon: Icon(Icons.badge_outlined),
+                    decoration: _fieldDecoration(
+                      label: 'Kelas',
+                      icon: Icons.badge_outlined,
                     ),
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _defaultSubjectController,
-                    decoration: const InputDecoration(
-                      labelText: 'Mata pelajaran utama *',
-                      prefixIcon: Icon(Icons.menu_book_outlined),
+                    decoration: _fieldDecoration(
+                      label: 'Mata pelajaran utama *',
+                      icon: Icons.menu_book_outlined,
+                      helperText:
+                          'Contoh: Matematika, Bahasa Inggris, atau Fisika.',
                     ),
                     textInputAction: TextInputAction.next,
                     validator: _required('Mata pelajaran utama wajib diisi'),
@@ -169,10 +221,10 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
                   ] else if (academicPeriodItems.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     DropdownButtonFormField<int?>(
-                      value: selectedAcademicPeriodId,
-                      decoration: const InputDecoration(
-                        labelText: 'Periode akademik default',
-                        prefixIcon: Icon(Icons.calendar_month_outlined),
+                      initialValue: selectedAcademicPeriodId,
+                      decoration: _fieldDecoration(
+                        label: 'Periode akademik default',
+                        icon: Icons.calendar_month_outlined,
                         helperText:
                             'Opsional. Jadwal Sprint 03 akan membaca default ini bila tersedia.',
                       ),
@@ -190,21 +242,24 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
               _FormSection(
                 title: 'Kontak & Lokasi',
                 icon: Icons.contact_phone_outlined,
+                description:
+                    'Memudahkan follow up orang tua dan kebutuhan kunjungan.',
                 children: [
                   TextFormField(
                     controller: _parentNameController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nama orang tua/wali',
-                      prefixIcon: Icon(Icons.family_restroom_outlined),
+                    decoration: _fieldDecoration(
+                      label: 'Nama orang tua/wali',
+                      icon: Icons.family_restroom_outlined,
                     ),
                     textInputAction: TextInputAction.next,
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _whatsappController,
-                    decoration: const InputDecoration(
-                      labelText: 'WhatsApp',
-                      prefixIcon: Icon(Icons.chat_outlined),
+                    decoration: _fieldDecoration(
+                      label: 'WhatsApp',
+                      icon: Icons.chat_outlined,
+                      helperText: 'Isi angka saja, mis. 081234567890.',
                     ),
                     keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
@@ -213,9 +268,11 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _addressController,
-                    decoration: const InputDecoration(
-                      labelText: 'Alamat',
-                      prefixIcon: Icon(Icons.location_on_outlined),
+                    decoration: _fieldDecoration(
+                      label: 'Alamat',
+                      icon: Icons.location_on_outlined,
+                      helperText:
+                          'Opsional. Berguna untuk les privat atau penjemputan.',
                     ),
                     maxLines: 2,
                   ),
@@ -225,72 +282,120 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
               _FormSection(
                 title: 'Tarif & Status',
                 icon: Icons.payments_outlined,
+                description:
+                    'Pilihan ini tetap memakai nilai data yang sama seperti sebelumnya.',
                 children: [
-                  DropdownButtonFormField<String>(
-                    value: _rateType,
-                    decoration: const InputDecoration(
-                      labelText: 'Tipe tarif *',
-                      prefixIcon: Icon(Icons.sell_outlined),
+                  Text(
+                    'Tipe tarif *',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: RateType.perSession,
-                        child: Text('Per sesi'),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _SelectionTile(
+                        label: 'Per sesi',
+                        icon: Icons.event_available_outlined,
+                        selected: _rateType == RateType.perSession,
+                        onTap: isSubmitting
+                            ? null
+                            : () => setState(
+                                () => _rateType = RateType.perSession,
+                              ),
                       ),
-                      DropdownMenuItem(
-                        value: RateType.monthly,
-                        child: Text('Bulanan'),
+                      _SelectionTile(
+                        label: 'Bulanan',
+                        icon: Icons.calendar_view_month_outlined,
+                        selected: _rateType == RateType.monthly,
+                        onTap: isSubmitting
+                            ? null
+                            : () =>
+                                  setState(() => _rateType = RateType.monthly),
                       ),
-                      DropdownMenuItem(
-                        value: RateType.package,
-                        child: Text('Paket'),
+                      _SelectionTile(
+                        label: 'Paket',
+                        icon: Icons.inventory_2_outlined,
+                        selected: _rateType == RateType.package,
+                        onTap: isSubmitting
+                            ? null
+                            : () =>
+                                  setState(() => _rateType = RateType.package),
                       ),
                     ],
-                    onChanged: isSubmitting
-                        ? null
-                        : (value) => setState(
-                            () => _rateType = value ?? RateType.perSession,
-                          ),
-                    validator: (value) =>
-                        value == null ? 'Tipe tarif wajib dipilih' : null,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Pilih pola penagihan yang dipakai untuk siswa ini.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _rateAmountController,
-                    decoration: const InputDecoration(
-                      labelText: 'Nominal tarif *',
-                      prefixIcon: Icon(Icons.attach_money_outlined),
+                    decoration: _fieldDecoration(
+                      label: 'Nominal tarif *',
+                      icon: Icons.attach_money_outlined,
+                      helperText:
+                          'Masukkan angka penuh sesuai tipe tarif yang dipilih.',
                     ),
                     keyboardType: TextInputType.number,
                     textInputAction: TextInputAction.next,
                     validator: _validateRateAmount,
                   ),
                   const SizedBox(height: 12),
-                  DropdownButtonFormField<String>(
-                    value: _status,
-                    decoration: const InputDecoration(
-                      labelText: 'Status',
-                      prefixIcon: Icon(Icons.verified_user_outlined),
+                  Text(
+                    'Status',
+                    style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
                     ),
-                    items: const [
-                      DropdownMenuItem(
-                        value: StudentStatus.active,
-                        child: Text('Aktif'),
+                  ),
+                  const SizedBox(height: 10),
+                  Wrap(
+                    spacing: 10,
+                    runSpacing: 10,
+                    children: [
+                      _SelectionTile(
+                        label: 'Aktif',
+                        icon: Icons.check_circle_outline,
+                        selected: _status == StudentStatus.active,
+                        onTap: isSubmitting
+                            ? null
+                            : () => setState(
+                                () => _status = StudentStatus.active,
+                              ),
                       ),
-                      DropdownMenuItem(
-                        value: StudentStatus.pending,
-                        child: Text('Pending'),
+                      _SelectionTile(
+                        label: 'Pending',
+                        icon: Icons.schedule_outlined,
+                        selected: _status == StudentStatus.pending,
+                        onTap: isSubmitting
+                            ? null
+                            : () => setState(
+                                () => _status = StudentStatus.pending,
+                              ),
                       ),
-                      DropdownMenuItem(
-                        value: StudentStatus.inactive,
-                        child: Text('Nonaktif'),
+                      _SelectionTile(
+                        label: 'Nonaktif',
+                        icon: Icons.pause_circle_outline,
+                        selected: _status == StudentStatus.inactive,
+                        onTap: isSubmitting
+                            ? null
+                            : () => setState(
+                                () => _status = StudentStatus.inactive,
+                              ),
                       ),
                     ],
-                    onChanged: isSubmitting
-                        ? null
-                        : (value) => setState(
-                            () => _status = value ?? StudentStatus.active,
-                          ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    'Status membantu membedakan siswa aktif, calon, atau jeda belajar.',
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
                   ),
                 ],
               ),
@@ -298,12 +403,16 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
               _FormSection(
                 title: 'Catatan',
                 icon: Icons.notes_outlined,
+                description:
+                    'Tambahkan konteks singkat yang berguna untuk tim pengajar.',
                 children: [
                   TextFormField(
                     controller: _noteController,
-                    decoration: const InputDecoration(
-                      labelText: 'Catatan',
-                      prefixIcon: Icon(Icons.sticky_note_2_outlined),
+                    decoration: _fieldDecoration(
+                      label: 'Catatan',
+                      icon: Icons.sticky_note_2_outlined,
+                      helperText:
+                          'Contoh: preferensi belajar, target, atau info penting lainnya.',
                     ),
                     maxLines: 3,
                   ),
@@ -339,6 +448,15 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
 
   String get _fallbackPath =>
       widget.studentId == null ? '/students' : '/students/${widget.studentId}';
+
+  void _handleBackNavigation(BuildContext context) {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+    context.go(_fallbackPath);
+  }
 
   void _loadStudent(Student student) {
     if (_didLoadStudent) return;
@@ -533,15 +651,72 @@ class _FormIntroCard extends StatelessWidget {
   }
 }
 
+class _SelectionTile extends StatelessWidget {
+  const _SelectionTile({
+    required this.label,
+    required this.icon,
+    required this.selected,
+    this.onTap,
+  });
+
+  final String label;
+  final IconData icon;
+  final bool selected;
+  final VoidCallback? onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+
+    return Material(
+      color: selected
+          ? colorScheme.primaryContainer.withValues(alpha: .9)
+          : colorScheme.surfaceContainerHighest.withValues(alpha: .42),
+      borderRadius: BorderRadius.circular(16),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(16),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                icon,
+                size: 18,
+                color: selected
+                    ? colorScheme.primary
+                    : colorScheme.onSurfaceVariant,
+              ),
+              const SizedBox(width: 8),
+              Text(
+                label,
+                style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: selected
+                      ? colorScheme.onPrimaryContainer
+                      : colorScheme.onSurface,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
 class _FormSection extends StatelessWidget {
   const _FormSection({
     required this.title,
     required this.icon,
+    this.description,
     required this.children,
   });
 
   final String title;
   final IconData icon;
+  final String? description;
   final List<Widget> children;
 
   @override
@@ -550,24 +725,55 @@ class _FormSection extends StatelessWidget {
 
     return Card(
       child: Padding(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
-              children: [
-                Icon(icon, color: colorScheme.primary),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    title,
-                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: colorScheme.onSurface,
+            Container(
+              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
+              decoration: BoxDecoration(
+                color: colorScheme.primaryContainer.withValues(alpha: .5),
+                borderRadius: BorderRadius.circular(20),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(10),
+                    decoration: BoxDecoration(
+                      color: colorScheme.primary.withValues(alpha: .14),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Icon(icon, color: colorScheme.primary),
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          title,
+                          style: Theme.of(context).textTheme.titleMedium
+                              ?.copyWith(
+                                fontWeight: FontWeight.w900,
+                                color: colorScheme.onPrimaryContainer,
+                              ),
+                        ),
+                        if (description != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            description!,
+                            style: Theme.of(context).textTheme.bodySmall
+                                ?.copyWith(
+                                  color: colorScheme.onPrimaryContainer
+                                      .withValues(alpha: .78),
+                                ),
+                          ),
+                        ],
+                      ],
                     ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
             const SizedBox(height: 14),
             ...children,

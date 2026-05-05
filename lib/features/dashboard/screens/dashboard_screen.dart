@@ -4,11 +4,12 @@ import 'package:go_router/go_router.dart';
 import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
+import '../../../core/database/app_database.dart';
 import '../../../core/showcase/app_showcase.dart';
+import '../../academic/providers/academic_period_provider.dart';
 import '../../guide/providers/onboarding_provider.dart';
 import '../../schedules/data/schedule_repository.dart';
 import '../../schedules/providers/schedule_provider.dart';
-import '../../schedules/widgets/schedule_status_chip.dart';
 import '../data/dashboard_repository.dart';
 import '../providers/dashboard_provider.dart';
 
@@ -50,8 +51,8 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
   Widget build(BuildContext context) {
     final summaryState = ref.watch(dashboardSummaryProvider);
     final todaySchedulesState = ref.watch(todaySchedulesProvider);
+    final academicPeriodsState = ref.watch(academicPeriodsProvider);
     final summary = summaryState.asData?.value;
-    final colorScheme = Theme.of(context).colorScheme;
     startRequestedShowcase(
       context: context,
       ref: ref,
@@ -60,87 +61,100 @@ class _DashboardScreenState extends ConsumerState<DashboardScreen> {
     );
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Sentosaku TutorKit'),
-        actions: [
-          IconButton(
-            tooltip: 'Mulai panduan dashboard',
-            onPressed: () => startAppShowcase(context, _dashboardShowcaseKeys),
-            icon: const Icon(Icons.help_outline_rounded),
-          ),
-        ],
-      ),
+      appBar: AppBar(toolbarHeight: 0, automaticallyImplyLeading: false),
       body: RefreshIndicator(
         onRefresh: () => ref.refresh(dashboardSummaryProvider.future),
         child: ListView(
-          padding: const EdgeInsets.fromLTRB(16, 8, 16, 144),
+          padding: const EdgeInsets.fromLTRB(0, 0, 0, 144),
           children: [
-            AppShowcaseTarget(
-              showcaseKey: AppShowcaseKeys.dashboardHero,
-              title: 'Dashboard',
-              description: 'Ini ringkasan aktivitas les Anda',
-              child: _HeroHeader(
-                colorScheme: colorScheme,
-                summary: summary,
-                todaySchedulesState: todaySchedulesState,
+            Container(
+              padding: const EdgeInsets.fromLTRB(20, 24, 20, 20),
+              decoration: const BoxDecoration(
+                color: Color(0xFF7E9E63),
+                borderRadius: BorderRadius.vertical(
+                  bottom: Radius.circular(32),
+                ),
+              ),
+              child: AppShowcaseTarget(
+                showcaseKey: AppShowcaseKeys.dashboardHero,
+                title: 'Dashboard',
+                description: 'Ini ringkasan aktivitas les Anda',
+                child: _HeroHeader(
+                  summary: summary,
+                  todaySchedulesState: todaySchedulesState,
+                ),
               ),
             ),
-            const SizedBox(height: 18),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  'Ringkasan',
-                  style: Theme.of(
-                    context,
-                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-                ),
-                TextButton.icon(
-                  onPressed: () => ref.invalidate(dashboardSummaryProvider),
-                  icon: const Icon(Icons.refresh_rounded),
-                  label: const Text('Refresh'),
-                ),
-              ],
-            ),
-            summaryState.when(
-              data: (summary) => Column(
+            const SizedBox(height: 28),
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  AppShowcaseTarget(
-                    showcaseKey: AppShowcaseKeys.dashboardSummary,
-                    title: 'Ringkasan',
-                    description: 'Ini ringkasan aktivitas les Anda',
-                    child: _SummaryGrid(summary: summary),
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        'Ringkasan',
+                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      TextButton.icon(
+                        onPressed: () =>
+                            ref.invalidate(dashboardSummaryProvider),
+                        icon: const Icon(Icons.refresh_rounded),
+                        label: const Text('Refresh'),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 18),
-                  _ActivityChart(summary: summary),
+                  summaryState.when(
+                    data: (summary) => Column(
+                      children: [
+                        AppShowcaseTarget(
+                          showcaseKey: AppShowcaseKeys.dashboardSummary,
+                          title: 'Ringkasan',
+                          description: 'Ini ringkasan aktivitas les Anda',
+                          child: _SummaryGrid(summary: summary),
+                        ),
+                        const SizedBox(height: 18),
+                        _ActivityChart(summary: summary),
+                      ],
+                    ),
+                    loading: () => const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(32),
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                    error: (error, stackTrace) => Card(
+                      child: Padding(
+                        padding: const EdgeInsets.all(16),
+                        child: Text('Gagal memuat ringkasan: $error'),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Akses Cepat',
+                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  _AcademicPeriodShortcutCard(
+                    periodsState: academicPeriodsState,
+                  ),
+                  const SizedBox(height: 10),
+                  AppShowcaseTarget(
+                    showcaseKey: AppShowcaseKeys.dashboardQuickActions,
+                    title: 'Akses cepat',
+                    description:
+                        'Gunakan akses cepat untuk membuka modul utama.',
+                    child: const _QuickActionGrid(),
+                  ),
                 ],
               ),
-              loading: () => const Center(
-                child: Padding(
-                  padding: EdgeInsets.all(32),
-                  child: CircularProgressIndicator(),
-                ),
-              ),
-              error: (error, stackTrace) => Card(
-                child: Padding(
-                  padding: const EdgeInsets.all(16),
-                  child: Text('Gagal memuat ringkasan: $error'),
-                ),
-              ),
-            ),
-            const SizedBox(height: 24),
-            Text(
-              'Akses Cepat',
-              style: Theme.of(
-                context,
-              ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w800),
-            ),
-            const SizedBox(height: 12),
-            AppShowcaseTarget(
-              showcaseKey: AppShowcaseKeys.dashboardQuickActions,
-              title: 'Akses cepat',
-              description: 'Gunakan akses cepat untuk membuka modul utama.',
-              child: const _QuickActionGrid(),
             ),
           ],
         ),
@@ -161,19 +175,14 @@ final _dashboardShowcaseKeys = [
 ];
 
 class _HeroHeader extends StatelessWidget {
-  const _HeroHeader({
-    required this.colorScheme,
-    required this.summary,
-    required this.todaySchedulesState,
-  });
+  const _HeroHeader({required this.summary, required this.todaySchedulesState});
 
-  final ColorScheme colorScheme;
   final DashboardSummary? summary;
   final AsyncValue<List<ScheduleDetail>> todaySchedulesState;
 
   @override
   Widget build(BuildContext context) {
-    final now = DateFormat('EEEE, d MMMM yyyy').format(DateTime.now());
+    final now = DateFormat('d MMM yyyy', 'id_ID').format(DateTime.now());
     final currencyFormat = NumberFormat.currency(
       locale: 'id_ID',
       symbol: 'Rp',
@@ -183,116 +192,83 @@ class _HeroHeader extends StatelessWidget {
         ? '-'
         : currencyFormat.format(summary!.monthlyRevenue);
 
-    return Container(
-      padding: const EdgeInsets.all(22),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [colorScheme.primary, colorScheme.secondary],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: colorScheme.primary.withValues(alpha: .22),
-            blurRadius: 28,
-            offset: const Offset(0, 16),
-          ),
-        ],
-      ),
-      child: Stack(
-        children: [
-          Positioned(
-            right: -34,
-            top: -42,
-            child: Icon(
-              Icons.school_rounded,
-              size: 150,
-              color: Colors.white.withValues(alpha: .13),
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Text(
+                'Sentosaku TutorKit',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
             ),
-          ),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: .18),
-                  borderRadius: BorderRadius.circular(999),
-                ),
-                child: Text(
-                  now,
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
+            Material(
+              color: Colors.white.withValues(alpha: .18),
+              borderRadius: BorderRadius.circular(999),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(999),
+                onTap: () => startAppShowcase(context, _dashboardShowcaseKeys),
+                child: const Padding(
+                  padding: EdgeInsets.all(10),
+                  child: Icon(
+                    Icons.help_outline_rounded,
                     color: Colors.white,
-                    fontWeight: FontWeight.w700,
+                    size: 18,
                   ),
                 ),
               ),
-              const SizedBox(height: 22),
-              Text(
-                'Selamat datang kembali',
-                style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 14),
+        Row(
+          children: [
+            Expanded(
+              child: _HeroPill(icon: Icons.calendar_today_rounded, label: now),
+            ),
+            const SizedBox(width: 10),
+            Flexible(
+              child: _HeroPill(
+                icon: Icons.account_balance_wallet_rounded,
+                label: monthlyRevenue,
+                alignment: MainAxisAlignment.end,
               ),
-              const SizedBox(height: 8),
-              Text(
-                'Kelola siswa, jadwal, sesi, dan pembayaran tutor dalam satu tempat.',
-                style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                  color: Colors.white.withValues(alpha: .88),
-                  height: 1.35,
-                ),
-              ),
-              const SizedBox(height: 18),
-              LayoutBuilder(
-                builder: (context, constraints) {
-                  final isCompact = constraints.maxWidth < 620;
-                  final scheduleCard = _NearestScheduleCard(
-                    schedulesState: todaySchedulesState,
-                    colorScheme: colorScheme,
-                  );
-
-                  if (isCompact) {
-                    return Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        SizedBox(width: double.infinity, child: scheduleCard),
-                        const SizedBox(height: 10),
-                        _HeaderRevenueBadge(value: monthlyRevenue),
-                      ],
-                    );
-                  }
-
-                  return Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(child: scheduleCard),
-                      const SizedBox(width: 10),
-                      _HeaderRevenueBadge(value: monthlyRevenue),
-                    ],
-                  );
-                },
-              ),
-            ],
+            ),
+          ],
+        ),
+        const SizedBox(height: 18),
+        Text(
+          'Halo',
+          style: Theme.of(context).textTheme.headlineMedium?.copyWith(
+            color: Colors.white,
+            fontWeight: FontWeight.w900,
           ),
-        ],
-      ),
+        ),
+        const SizedBox(height: 4),
+        Text(
+          'Ringkasan singkat aktivitas mengajarmu hari ini.',
+          style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+            color: Colors.white.withValues(alpha: .88),
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+        const SizedBox(height: 16),
+        _NearestScheduleCard(schedulesState: todaySchedulesState),
+      ],
     );
   }
 }
 
 class _NearestScheduleCard extends StatelessWidget {
-  const _NearestScheduleCard({
-    required this.schedulesState,
-    required this.colorScheme,
-  });
+  const _NearestScheduleCard({required this.schedulesState});
 
   final AsyncValue<List<ScheduleDetail>> schedulesState;
-  final ColorScheme colorScheme;
 
   @override
   Widget build(BuildContext context) {
@@ -301,249 +277,156 @@ class _NearestScheduleCard extends StatelessWidget {
         final detail = _nearestSchedule(schedules, DateTime.now());
         if (detail == null) {
           return _NearestScheduleShell(
-            child: Wrap(
-              spacing: 10,
-              runSpacing: 8,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: [
-                const _NearestScheduleIcon(icon: Icons.event_busy_outlined),
-                Text(
-                  'Tidak ada jadwal lagi hari ini',
-                  style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-                TextButton.icon(
-                  onPressed: () => context.go('/schedules/new'),
-                  icon: const Icon(Icons.add_rounded, size: 18),
-                  label: const Text('Buat jadwal'),
-                  style: TextButton.styleFrom(
-                    foregroundColor: colorScheme.primary,
-                    padding: const EdgeInsets.symmetric(horizontal: 8),
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                  ),
-                ),
-              ],
-            ),
+            leadingIcon: Icons.calendar_month_rounded,
+            title: 'Belum ada jadwal lagi hari ini',
+            subtitle: 'Tambahkan jadwal baru untuk melengkapi agenda.',
+            actionTooltip: 'Buat jadwal',
+            onActionTap: () => context.go('/schedules/new'),
           );
         }
 
-        return _NearestScheduleDetailCard(
-          detail: detail,
-          colorScheme: colorScheme,
-        );
+        return _NearestScheduleDetailCard(detail: detail);
       },
       loading: () => _NearestScheduleShell(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            SizedBox.square(
-              dimension: 18,
-              child: CircularProgressIndicator(
-                strokeWidth: 2,
-                color: colorScheme.primary,
-              ),
-            ),
-            const SizedBox(width: 10),
-            Text(
-              'Memuat jadwal...',
-              style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                color: colorScheme.primary,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ],
-        ),
+        leadingIcon: Icons.calendar_month_rounded,
+        title: 'Memuat jadwal...',
+        subtitle: 'Menyiapkan ringkasan agenda hari ini.',
+        actionTooltip: 'Buat jadwal',
+        onActionTap: () => context.go('/schedules/new'),
       ),
       error: (error, stackTrace) => _NearestScheduleShell(
-        child: Text(
-          'Gagal memuat jadwal hari ini',
-          style: Theme.of(context).textTheme.labelLarge?.copyWith(
-            color: colorScheme.primary,
-            fontWeight: FontWeight.w800,
-          ),
-        ),
+        leadingIcon: Icons.calendar_month_rounded,
+        title: 'Gagal memuat jadwal hari ini',
+        subtitle: 'Coba refresh untuk mengambil data terbaru.',
+        actionTooltip: 'Buat jadwal',
+        onActionTap: () => context.go('/schedules/new'),
       ),
     );
   }
 }
 
 class _NearestScheduleDetailCard extends StatelessWidget {
-  const _NearestScheduleDetailCard({
-    required this.detail,
-    required this.colorScheme,
-  });
+  const _NearestScheduleDetailCard({required this.detail});
 
   final ScheduleDetail detail;
-  final ColorScheme colorScheme;
 
   @override
   Widget build(BuildContext context) {
     final schedule = detail.schedule;
-    final dateFormat = DateFormat('EEEE, d MMM yyyy', 'id_ID');
     final timeFormat = DateFormat.Hm();
-    final dateText = dateFormat.format(schedule.date);
     final timeText =
         '${timeFormat.format(schedule.startTime)} - ${timeFormat.format(schedule.endTime)}';
-    final address = detail.student.address?.trim();
-    final locationText = address == null || address.isEmpty
-        ? 'Lokasi belum diisi'
-        : address;
+    final subtitle = '$timeText • ${detail.student.name}';
+    final secondaryText = detail.subject.name;
 
     return _NearestScheduleShell(
+      leadingIcon: Icons.calendar_month_rounded,
+      title: 'Jadwal terdekat',
+      subtitle: subtitle,
+      caption: secondaryText,
       onTap: () => context.go('/schedules/${schedule.id}'),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Row(
-            children: [
-              const _NearestScheduleIcon(icon: Icons.event_available_rounded),
-              const SizedBox(width: 8),
-              Expanded(
-                child: Text(
-                  'Jadwal terdekat',
-                  style: Theme.of(context).textTheme.labelMedium?.copyWith(
-                    color: colorScheme.primary,
-                    fontWeight: FontWeight.w900,
-                  ),
-                ),
-              ),
-              TextButton(
-                onPressed: () => context.go('/schedules/${schedule.id}'),
-                style: TextButton.styleFrom(
-                  foregroundColor: colorScheme.primary,
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  minimumSize: const Size(0, 34),
-                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                ),
-                child: const Text('Detail'),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          _NearestScheduleInfoRow(
-            icon: Icons.calendar_today_rounded,
-            label: 'Tgl',
-            value: dateText,
-            colorScheme: colorScheme,
-          ),
-          _NearestScheduleInfoRow(
-            icon: Icons.schedule_rounded,
-            label: 'Jam',
-            value: timeText,
-            colorScheme: colorScheme,
-          ),
-          _NearestScheduleInfoRow(
-            icon: Icons.place_outlined,
-            label: 'Lokasi',
-            value: locationText,
-            colorScheme: colorScheme,
-            maxLines: 2,
-          ),
-          _NearestScheduleInfoRow(
-            icon: Icons.person_outline_rounded,
-            label: 'Murid',
-            value: detail.student.name,
-            colorScheme: colorScheme,
-          ),
-          const SizedBox(height: 6),
-          Wrap(
-            spacing: 10,
-            runSpacing: 6,
-            crossAxisAlignment: WrapCrossAlignment.center,
-            children: [
-              ScheduleStatusChip(status: schedule.status),
-              Text(
-                detail.subject.name,
-                style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                  color: colorScheme.onSurfaceVariant,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-class _NearestScheduleInfoRow extends StatelessWidget {
-  const _NearestScheduleInfoRow({
-    required this.icon,
-    required this.label,
-    required this.value,
-    required this.colorScheme,
-    this.maxLines = 1,
-  });
-
-  final IconData icon;
-  final String label;
-  final String value;
-  final ColorScheme colorScheme;
-  final int maxLines;
-
-  @override
-  Widget build(BuildContext context) {
-    final textTheme = Theme.of(context).textTheme;
-
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 2),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Padding(
-            padding: const EdgeInsets.only(top: 2),
-            child: Icon(icon, size: 16, color: colorScheme.primary),
-          ),
-          const SizedBox(width: 6),
-          SizedBox(
-            width: 48,
-            child: Text(
-              '$label:',
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurfaceVariant,
-                fontWeight: FontWeight.w800,
-              ),
-            ),
-          ),
-          const SizedBox(width: 4),
-          Expanded(
-            child: Text(
-              value,
-              maxLines: maxLines,
-              overflow: TextOverflow.ellipsis,
-              style: textTheme.bodySmall?.copyWith(
-                color: colorScheme.onSurface,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ),
-        ],
-      ),
+      actionTooltip: 'Buat jadwal',
+      onActionTap: () => context.go('/schedules/new'),
     );
   }
 }
 
 class _NearestScheduleShell extends StatelessWidget {
-  const _NearestScheduleShell({required this.child, this.onTap});
+  const _NearestScheduleShell({
+    required this.leadingIcon,
+    required this.title,
+    required this.subtitle,
+    required this.actionTooltip,
+    required this.onActionTap,
+    this.caption,
+    this.onTap,
+  });
 
-  final Widget child;
+  final IconData leadingIcon;
+  final String title;
+  final String subtitle;
+  final String? caption;
+  final String actionTooltip;
+  final VoidCallback onActionTap;
   final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: Colors.white,
-      borderRadius: BorderRadius.circular(20),
+      color: const Color(0xFFF6F0E8),
+      borderRadius: BorderRadius.circular(22),
       clipBehavior: Clip.antiAlias,
       child: InkWell(
         onTap: onTap,
-        child: Padding(padding: const EdgeInsets.all(12), child: child),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              _NearestScheduleIcon(icon: leadingIcon),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                        color: const Color(0xFF4E6640),
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: const Color(0xFF20261D),
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    if (caption != null) ...[
+                      const SizedBox(height: 2),
+                      Text(
+                        caption!,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                          color: const Color(0xFF66705E),
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
+              Tooltip(
+                message: actionTooltip,
+                child: InkWell(
+                  onTap: onActionTap,
+                  borderRadius: BorderRadius.circular(999),
+                  child: Container(
+                    width: 38,
+                    height: 38,
+                    decoration: const BoxDecoration(
+                      color: Color(0xFF7E9E63),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.add_rounded,
+                      color: Colors.white,
+                      size: 20,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -556,17 +439,15 @@ class _NearestScheduleIcon extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
     return Container(
-      width: 30,
-      height: 30,
+      width: 40,
+      height: 40,
       alignment: Alignment.center,
       decoration: BoxDecoration(
-        color: colorScheme.primary.withValues(alpha: .12),
-        borderRadius: BorderRadius.circular(12),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(14),
       ),
-      child: Icon(icon, color: colorScheme.primary, size: 18),
+      child: Icon(icon, color: const Color(0xFF7E9E63), size: 20),
     );
   }
 }
@@ -588,50 +469,41 @@ bool _isActiveScheduleStatus(String status) {
   return status != ScheduleStatus.done && status != ScheduleStatus.cancelled;
 }
 
-class _HeaderRevenueBadge extends StatelessWidget {
-  const _HeaderRevenueBadge({required this.value});
+class _HeroPill extends StatelessWidget {
+  const _HeroPill({
+    required this.icon,
+    required this.label,
+    this.alignment = MainAxisAlignment.start,
+  });
 
-  final String value;
+  final IconData icon;
+  final String label;
+  final MainAxisAlignment alignment;
 
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
       decoration: BoxDecoration(
         color: Colors.white.withValues(alpha: .18),
-        border: Border.all(color: Colors.white.withValues(alpha: .28)),
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(999),
       ),
       child: Row(
-        mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: alignment,
+        mainAxisSize: MainAxisSize.max,
         children: [
-          const Icon(
-            Icons.account_balance_wallet_rounded,
-            color: Colors.white,
-            size: 18,
-          ),
+          Icon(icon, color: Colors.white, size: 16),
           const SizedBox(width: 8),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                'Pendapatan bulan ini',
-                style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: Colors.white.withValues(alpha: .82),
-                  fontWeight: FontWeight.w700,
-                ),
+          Flexible(
+            child: Text(
+              label,
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: Theme.of(context).textTheme.labelLarge?.copyWith(
+                color: Colors.white,
+                fontWeight: FontWeight.w700,
               ),
-              Text(
-                value,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: Colors.white,
-                  fontWeight: FontWeight.w900,
-                ),
-              ),
-            ],
+            ),
           ),
         ],
       ),
@@ -905,6 +777,115 @@ class _ChartBar extends StatelessWidget {
           },
         ),
       ],
+    );
+  }
+}
+
+class _AcademicPeriodShortcutCard extends StatelessWidget {
+  const _AcademicPeriodShortcutCard({required this.periodsState});
+
+  final AsyncValue<List<AcademicPeriod>> periodsState;
+
+  @override
+  Widget build(BuildContext context) {
+    final colorScheme = Theme.of(context).colorScheme;
+    final textTheme = Theme.of(context).textTheme;
+    final dateFormat = DateFormat('d MMM yyyy');
+
+    final (title, subtitle) = periodsState.when(
+      data: (periods) {
+        AcademicPeriod? activePeriod;
+        for (final period in periods) {
+          if (period.isActive) {
+            activePeriod = period;
+            break;
+          }
+        }
+
+        if (activePeriod == null) {
+          return (
+            'Periode akademik belum diatur',
+            'Tambahkan atau aktifkan periode akademik untuk mulai mengelola pembelajaran.',
+          );
+        }
+
+        return (
+          activePeriod.name,
+          '${dateFormat.format(activePeriod.startDate)} - ${dateFormat.format(activePeriod.endDate)}',
+        );
+      },
+      loading: () =>
+          ('Memuat periode akademik...', 'Buka pengaturan periode akademik.'),
+      error: (error, stackTrace) => (
+        'Gagal memuat periode akademik',
+        'Buka daftar periode akademik untuk memeriksa data aktif.',
+      ),
+    );
+
+    return Card(
+      margin: EdgeInsets.zero,
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: () => context.push('/academic-periods'),
+        child: Padding(
+          padding: const EdgeInsets.all(14),
+          child: Row(
+            children: [
+              Container(
+                width: 40,
+                height: 40,
+                alignment: Alignment.center,
+                decoration: BoxDecoration(
+                  color: colorScheme.primary.withValues(alpha: .1),
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                child: Icon(
+                  Icons.school_rounded,
+                  color: colorScheme.primary,
+                  size: 20,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Setup Periode Akademik',
+                      style: textTheme.labelLarge?.copyWith(
+                        fontWeight: FontWeight.w900,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      title,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      subtitle,
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
+                      style: textTheme.bodySmall?.copyWith(
+                        color: colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              Icon(
+                Icons.chevron_right_rounded,
+                color: colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

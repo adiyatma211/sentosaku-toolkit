@@ -21,6 +21,8 @@ class ReportFilterNotifier extends Notifier<ReportFilter> {
     state = ReportFilter.today().copyWith(
       studentId: state.studentId,
       subjectId: state.subjectId,
+      includeAttendanceRecap: state.includeAttendanceRecap,
+      clearAcademicPeriod: true,
     );
   }
 
@@ -28,6 +30,8 @@ class ReportFilterNotifier extends Notifier<ReportFilter> {
     state = ReportFilter.thisWeek().copyWith(
       studentId: state.studentId,
       subjectId: state.subjectId,
+      includeAttendanceRecap: state.includeAttendanceRecap,
+      clearAcademicPeriod: true,
     );
   }
 
@@ -35,6 +39,27 @@ class ReportFilterNotifier extends Notifier<ReportFilter> {
     state = ReportFilter.currentMonth().copyWith(
       studentId: state.studentId,
       subjectId: state.subjectId,
+      includeAttendanceRecap: state.includeAttendanceRecap,
+      clearAcademicPeriod: true,
+    );
+  }
+
+  void setAcademicPeriod({
+    required int id,
+    required String name,
+    required DateTime startDate,
+    required DateTime endDate,
+  }) {
+    state = state.copyWith(
+      startDate: DateTime(startDate.year, startDate.month, startDate.day),
+      endDate: DateTime(
+        endDate.year,
+        endDate.month,
+        endDate.day,
+      ).add(const Duration(days: 1)),
+      filterType: ReportFilterType.academicPeriod,
+      academicPeriodId: id,
+      academicPeriodName: name,
     );
   }
 
@@ -53,6 +78,7 @@ class ReportFilterNotifier extends Notifier<ReportFilter> {
       startDate: normalizedStart,
       endDate: normalizedEnd,
       filterType: ReportFilterType.custom,
+      clearAcademicPeriod: true,
     );
   }
 
@@ -69,6 +95,10 @@ class ReportFilterNotifier extends Notifier<ReportFilter> {
       clearSubject: subjectId == null,
     );
   }
+
+  void setIncludeAttendanceRecap(bool include) {
+    state = state.copyWith(includeAttendanceRecap: include);
+  }
 }
 
 final incomeReportProvider = FutureProvider<IncomeReport>((ref) {
@@ -77,7 +107,13 @@ final incomeReportProvider = FutureProvider<IncomeReport>((ref) {
 });
 
 final unpaidReportProvider = FutureProvider<UnpaidReport>((ref) {
-  return ref.watch(reportRepositoryProvider).getUnpaidReport();
+  final filter = ref.watch(reportFilterProvider);
+  return ref.watch(reportRepositoryProvider).getUnpaidReport(filter);
+});
+
+final attendanceReportProvider = FutureProvider<AttendanceReport>((ref) {
+  final filter = ref.watch(reportFilterProvider);
+  return ref.watch(reportRepositoryProvider).getAttendanceReport(filter);
 });
 
 final studentReportProvider = FutureProvider<StudentReport>((ref) {

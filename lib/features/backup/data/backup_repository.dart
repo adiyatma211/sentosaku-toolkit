@@ -101,10 +101,56 @@ class BackupRepository {
       throw ArgumentError('File restore kosong.');
     }
 
+    final activeDatabaseFile = await getDatabaseFile();
+    if (p.equals(
+      p.normalize(file.absolute.path),
+      p.normalize(activeDatabaseFile.absolute.path),
+    )) {
+      throw ArgumentError('File restore tidak boleh memakai database aktif.');
+    }
+
+    _validateSqliteDatabase(normalizedPath);
+  }
+
+  void _validateSqliteDatabase(String path) {
+    const requiredTables = {
+      'students',
+      'subjects',
+      'schedules',
+      'sessions',
+      'invoices',
+      'payments',
+      'settings',
+    };
+
     Database? sqlite;
     try {
-      sqlite = sqlite3.open(normalizedPath, mode: OpenMode.readOnly);
-      sqlite.select('SELECT name FROM sqlite_master LIMIT 1');
+      sqlite = sqlite3.open(path, mode: OpenMode.readOnly);
+      final integrity = sqlite.select('PRAGMA integrity_check').first.values.first;
+      if (integrity != 'ok') {
+        throw StateError('Integrity check gagal: $integrity');
+      }
+
+      final userVersion = sqlite.userVersion;
+      if (userVersion <= 0) {
+        throw StateError('Versi database backup tidak dikenali.');
+      }
+      if (userVersion > _database.schemaVersion) {
+        throw StateError(
+          'Backup dibuat oleh versi aplikasi lebih baru (schema $userVersion).',
+        );
+      }
+
+      final rows = sqlite.select(
+        "SELECT name FROM sqlite_master WHERE type = 'table'",
+      );
+      final tableNames = rows.map((row) => row['name'] as String).toSet();
+      final missingTables = requiredTables.difference(tableNames);
+      if (missingTables.isNotEmpty) {
+        throw StateError(
+          'Backup tidak memiliki tabel aplikasi: ${missingTables.join(', ')}.',
+        );
+      }
     } catch (error) {
       throw ArgumentError('File restore bukan database SQLite valid: $error');
     } finally {
@@ -138,6 +184,7 @@ class BackupRepository {
       try {
         await _deleteSidecarFiles(databaseFile.path);
         await File(path.trim()).copy(databaseFile.path);
+        _validateSqliteDatabase(databaseFile.path);
       } catch (_) {
         if (await safetyBackup.exists()) {
           await safetyBackup.copy(databaseFile.path);

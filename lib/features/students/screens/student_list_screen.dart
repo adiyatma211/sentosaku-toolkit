@@ -53,6 +53,7 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
           title: 'Tambah siswa',
           description: 'Tambah siswa baru',
           child: FloatingActionButton.extended(
+            heroTag: 'student-list-add-fab',
             onPressed: () => context.go('/students/new'),
             icon: const Icon(Icons.add),
             label: const Text('Tambah'),
@@ -62,58 +63,81 @@ class _StudentListScreenState extends ConsumerState<StudentListScreen> {
           data: (students) {
             final filteredStudents = _filterStudents(students);
 
-            return ListView(
-              padding: const EdgeInsets.fromLTRB(16, 12, 16, 112),
-              children: [
-                _StudentListHero(totalActive: students.length),
-                const SizedBox(height: 14),
-                AppShowcaseTarget(
-                  showcaseKey: AppShowcaseKeys.studentSearch,
-                  title: 'Pencarian siswa',
-                  description: 'Cari siswa',
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: (_) => setState(() {}),
-                    textInputAction: TextInputAction.search,
-                    decoration: InputDecoration(
-                      hintText: 'Cari nama, subject, orang tua, atau WhatsApp',
-                      prefixIcon: const Icon(Icons.search_outlined),
-                      suffixIcon: _searchController.text.isEmpty
-                          ? null
-                          : IconButton(
-                              tooltip: 'Bersihkan pencarian',
-                              onPressed: () =>
-                                  setState(_searchController.clear),
-                              icon: const Icon(Icons.close_rounded),
-                            ),
-                    ),
+            return CustomScrollView(
+              slivers: [
+                SliverPadding(
+                  padding: const EdgeInsets.fromLTRB(16, 12, 16, 0),
+                  sliver: SliverList.list(
+                    children: [
+                      _StudentListHero(totalActive: students.length),
+                      const SizedBox(height: 14),
+                      AppShowcaseTarget(
+                        showcaseKey: AppShowcaseKeys.studentSearch,
+                        title: 'Pencarian siswa',
+                        description: 'Cari siswa',
+                        child: TextField(
+                          controller: _searchController,
+                          onChanged: (_) => setState(() {}),
+                          textInputAction: TextInputAction.search,
+                          decoration: InputDecoration(
+                            hintText:
+                                'Cari nama, subject, orang tua, atau WhatsApp',
+                            prefixIcon: const Icon(Icons.search_outlined),
+                            suffixIcon: _searchController.text.isEmpty
+                                ? null
+                                : IconButton(
+                                    tooltip: 'Bersihkan pencarian',
+                                    onPressed: () =>
+                                        setState(_searchController.clear),
+                                    icon: const Icon(Icons.close_rounded),
+                                  ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
                   ),
                 ),
-                const SizedBox(height: 16),
                 if (students.isEmpty)
-                  StudentEmptyState(onAdd: () => context.go('/students/new'))
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 112),
+                    sliver: SliverToBoxAdapter(
+                      child: StudentEmptyState(
+                        onAdd: () => context.go('/students/new'),
+                      ),
+                    ),
+                  )
                 else if (filteredStudents.isEmpty)
-                  _SearchEmptyState(query: _searchController.text.trim())
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 112),
+                    sliver: SliverToBoxAdapter(
+                      child: _SearchEmptyState(
+                        query: _searchController.text.trim(),
+                      ),
+                    ),
+                  )
                 else
-                  AppShowcaseTarget(
-                    showcaseKey: AppShowcaseKeys.studentList,
-                    title: 'Daftar siswa',
-                    description: 'Buka detail siswa',
-                    child: Column(
-                      children: List.generate(filteredStudents.length, (index) {
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(16, 0, 16, 112),
+                    sliver: SliverList.separated(
+                      itemCount: filteredStudents.length,
+                      itemBuilder: (context, index) {
                         final student = filteredStudents[index];
-                        return Padding(
-                          padding: EdgeInsets.only(
-                            bottom: index == filteredStudents.length - 1
-                                ? 0
-                                : 10,
-                          ),
-                          child: StudentCard(
-                            student: student,
-                            onTap: () => context.go('/students/${student.id}'),
-                          ),
+                        final card = StudentCard(
+                          student: student,
+                          onTap: () => context.go('/students/${student.id}'),
                         );
-                      }),
+
+                        if (index != 0) return card;
+
+                        return AppShowcaseTarget(
+                          showcaseKey: AppShowcaseKeys.studentList,
+                          title: 'Daftar siswa',
+                          description: 'Buka detail siswa',
+                          child: card,
+                        );
+                      },
+                      separatorBuilder: (_, _) => const SizedBox(height: 10),
                     ),
                   ),
               ],

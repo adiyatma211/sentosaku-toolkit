@@ -1,4 +1,4 @@
-enum ReportFilterType { today, week, month, custom }
+enum ReportFilterType { today, week, month, academicPeriod, custom }
 
 class ReportFilter {
   const ReportFilter({
@@ -7,6 +7,9 @@ class ReportFilter {
     required this.filterType,
     this.studentId,
     this.subjectId,
+    this.academicPeriodId,
+    this.academicPeriodName,
+    this.includeAttendanceRecap = true,
   });
 
   factory ReportFilter.currentMonth() {
@@ -45,8 +48,12 @@ class ReportFilter {
     ReportFilterType? filterType,
     int? studentId,
     int? subjectId,
+    int? academicPeriodId,
+    String? academicPeriodName,
+    bool? includeAttendanceRecap,
     bool clearStudent = false,
     bool clearSubject = false,
+    bool clearAcademicPeriod = false,
   }) {
     return ReportFilter(
       startDate: startDate ?? this.startDate,
@@ -54,6 +61,14 @@ class ReportFilter {
       filterType: filterType ?? this.filterType,
       studentId: clearStudent ? null : studentId ?? this.studentId,
       subjectId: clearSubject ? null : subjectId ?? this.subjectId,
+      academicPeriodId: clearAcademicPeriod
+          ? null
+          : academicPeriodId ?? this.academicPeriodId,
+      academicPeriodName: clearAcademicPeriod
+          ? null
+          : academicPeriodName ?? this.academicPeriodName,
+      includeAttendanceRecap:
+          includeAttendanceRecap ?? this.includeAttendanceRecap,
     );
   }
 
@@ -61,7 +76,50 @@ class ReportFilter {
   final DateTime endDate;
   final int? studentId;
   final int? subjectId;
+  final int? academicPeriodId;
+  final String? academicPeriodName;
+  final bool includeAttendanceRecap;
   final ReportFilterType filterType;
+}
+
+class AttendanceReport {
+  const AttendanceReport({required this.rows});
+
+  final List<AttendanceReportRow> rows;
+
+  int get totalPresent => rows.fold(0, (total, row) => total + row.present);
+  int get totalPermission =>
+      rows.fold(0, (total, row) => total + row.permission);
+  int get totalAbsent => rows.fold(0, (total, row) => total + row.absent);
+  int get totalCancelled =>
+      rows.fold(0, (total, row) => total + row.cancelled);
+  int get totalRescheduled =>
+      rows.fold(0, (total, row) => total + row.rescheduled);
+  int get totalSessions => rows.fold(0, (total, row) => total + row.total);
+}
+
+class AttendanceReportRow {
+  const AttendanceReportRow({
+    required this.studentId,
+    required this.studentName,
+    required this.present,
+    required this.permission,
+    required this.absent,
+    required this.cancelled,
+    required this.rescheduled,
+    this.whatsapp,
+  });
+
+  final int studentId;
+  final String studentName;
+  final String? whatsapp;
+  final int present;
+  final int permission;
+  final int absent;
+  final int cancelled;
+  final int rescheduled;
+
+  int get total => present + permission + absent + cancelled + rescheduled;
 }
 
 class IncomeReport {
@@ -157,7 +215,9 @@ class StudentReportRow {
     required this.totalInvoiceAmount,
     required this.totalPaidAmount,
     required this.outstandingAmount,
+    required this.assessmentCount,
     this.whatsapp,
+    this.latestProgressNote,
   });
 
   final int studentId;
@@ -167,6 +227,8 @@ class StudentReportRow {
   final int totalInvoiceAmount;
   final int totalPaidAmount;
   final int outstandingAmount;
+  final int assessmentCount;
+  final String? latestProgressNote;
 }
 
 class ExportReportData {

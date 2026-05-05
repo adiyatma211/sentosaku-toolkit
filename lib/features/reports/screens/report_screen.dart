@@ -16,6 +16,7 @@ class ReportScreen extends ConsumerWidget {
     final incomeState = ref.watch(incomeReportProvider);
     final unpaidState = ref.watch(unpaidReportProvider);
     final studentState = ref.watch(studentReportProvider);
+    final attendanceState = ref.watch(attendanceReportProvider);
     final filterLabel = ref.watch(reportFilterLabelProvider);
     final colorScheme = Theme.of(context).colorScheme;
     final currencyFormat = NumberFormat.currency(
@@ -48,6 +49,7 @@ class ReportScreen extends ConsumerWidget {
             ref.invalidate(incomeReportProvider);
             ref.invalidate(unpaidReportProvider);
             ref.invalidate(studentReportProvider);
+            ref.invalidate(attendanceReportProvider);
             ref.invalidate(exportReportDataProvider);
           },
           child: ListView(
@@ -119,17 +121,16 @@ class ReportScreen extends ConsumerWidget {
                       error: (error, stackTrace) =>
                           _ErrorCard(message: '$error'),
                     ),
-                    studentState.when(
+                    attendanceState.when(
                       data: (report) => ReportSummaryCard(
-                        title: 'Sisa per siswa',
-                        value: currencyFormat.format(report.outstandingAmount),
-                        subtitle: 'Periode terpilih',
-                        icon: Icons.account_balance_wallet,
+                        title: 'Kehadiran',
+                        value: '${report.totalPresent}/${report.totalSessions}',
+                        subtitle: 'Hadir / total absensi',
+                        icon: Icons.fact_check_outlined,
                         accentColor: colorScheme.tertiary,
                         compact: true,
                       ),
-                      loading: () =>
-                          const _LoadingCard(title: 'Sisa per siswa'),
+                      loading: () => const _LoadingCard(title: 'Kehadiran'),
                       error: (error, stackTrace) =>
                           _ErrorCard(message: '$error'),
                     ),
@@ -195,6 +196,15 @@ class ReportScreen extends ConsumerWidget {
                           icon: Icons.groups_rounded,
                           accentColor: colorScheme.primary,
                           path: '/reports/students',
+                        ),
+                        _ReportMenuCard(
+                          title: 'Rekap Kehadiran',
+                          subtitle:
+                              'Hadir, izin, tidak hadir, batal, dan reschedule.',
+                          badge: 'Attendance',
+                          icon: Icons.fact_check_rounded,
+                          accentColor: colorScheme.tertiary,
+                          path: '/reports/attendance',
                         ),
                       ],
                     );

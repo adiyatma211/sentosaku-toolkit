@@ -27,7 +27,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final lastBackupState = ref.watch(lastBackupProvider);
+    final backupStatusState = ref.watch(backupStatusProvider);
     final historyState = ref.watch(backupHistoryProvider);
     final backupState = ref.watch(backupNotifierProvider);
     final restoreState = ref.watch(restoreNotifierProvider);
@@ -40,13 +40,14 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
         body: RefreshIndicator(
           onRefresh: () async {
             ref.invalidate(lastBackupProvider);
+            ref.invalidate(backupStatusProvider);
             ref.invalidate(backupHistoryProvider);
           },
           child: ListView(
             padding: const EdgeInsets.all(16),
             children: [
-              lastBackupState.when(
-                data: (backup) => BackupStatusCard(lastBackup: backup),
+              backupStatusState.when(
+                data: (status) => BackupStatusCard(status: status),
                 loading: () => const Card(
                   child: Padding(
                     padding: EdgeInsets.all(16),
@@ -171,7 +172,7 @@ class _BackupRestoreScreenState extends ConsumerState<BackupRestoreScreen> {
       builder: (context) => AlertDialog(
         title: const Text('Restore database?'),
         content: const Text(
-          'Data lokal saat ini akan diganti dengan file backup. Safety backup akan dibuat otomatis sebelum restore.',
+          'Data lokal saat ini akan diganti dengan file backup yang dipilih. File akan divalidasi, database aktif ditutup sementara, dan safety backup dibuat sebelum data diganti.',
         ),
         actions: [
           TextButton(
