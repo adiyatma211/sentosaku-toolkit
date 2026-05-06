@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:intl/intl.dart';
 
 import '../../../core/constants/app_constants.dart';
 import '../../../core/database/app_database.dart';
@@ -22,6 +24,7 @@ class StudentFormScreen extends ConsumerStatefulWidget {
 }
 
 class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
+  final _currencyFormatter = NumberFormat.decimalPattern('id_ID');
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _parentNameController = TextEditingController();
@@ -124,7 +127,9 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
       ),
       enabledBorder: OutlineInputBorder(
         borderRadius: borderRadius,
-        borderSide: BorderSide(color: colorScheme.outline.withValues(alpha: .7)),
+        borderSide: BorderSide(
+          color: colorScheme.outline.withValues(alpha: .7),
+        ),
       ),
       focusedBorder: OutlineInputBorder(
         borderRadius: borderRadius,
@@ -168,41 +173,58 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
           child: ListView(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 28),
             children: [
-              _FormIntroCard(isEdit: widget.isEdit),
-              const SizedBox(height: 16),
               _FormSection(
-                title: 'Data Murid',
-                icon: Icons.school_outlined,
-                description:
-                    'Informasi utama yang dipakai di profil dan jadwal.',
+                title: 'Informasi Pribadi',
+                icon: Icons.badge_outlined,
+                description: 'Data inti murid untuk profil dan jadwal les.',
                 children: [
                   TextFormField(
                     controller: _nameController,
                     decoration: _fieldDecoration(
-                      label: 'Nama siswa *',
+                      label: 'Nama lengkap *',
                       icon: Icons.person_outline,
                     ),
                     textInputAction: TextInputAction.next,
                     validator: _required('Nama siswa wajib diisi'),
                   ),
                   const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _schoolController,
-                    decoration: _fieldDecoration(
-                      label: 'Sekolah',
-                      icon: Icons.apartment_outlined,
-                    ),
-                    textInputAction: TextInputAction.next,
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: TextFormField(
+                          controller: _gradeController,
+                          decoration: _fieldDecoration(
+                            label: 'Kelas',
+                            icon: Icons.school_outlined,
+                          ),
+                          textInputAction: TextInputAction.next,
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        flex: 4,
+                        child: TextFormField(
+                          controller: _schoolController,
+                          decoration: _fieldDecoration(
+                            label: 'Sekolah',
+                            icon: Icons.apartment_outlined,
+                          ),
+                          textInputAction: TextInputAction.next,
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(height: 12),
-                  TextFormField(
-                    controller: _gradeController,
-                    decoration: _fieldDecoration(
-                      label: 'Kelas',
-                      icon: Icons.badge_outlined,
-                    ),
-                    textInputAction: TextInputAction.next,
-                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              _FormSection(
+                title: 'Akademik',
+                icon: Icons.menu_book_outlined,
+                description:
+                    'Atur mapel utama dan periode default bila sudah tersedia.',
+                children: [
                   const SizedBox(height: 12),
                   TextFormField(
                     controller: _defaultSubjectController,
@@ -221,12 +243,10 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
                   ] else if (academicPeriodItems.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     DropdownButtonFormField<int?>(
-                      initialValue: selectedAcademicPeriodId,
+                      value: selectedAcademicPeriodId,
                       decoration: _fieldDecoration(
                         label: 'Periode akademik default',
                         icon: Icons.calendar_month_outlined,
-                        helperText:
-                            'Opsional. Jadwal Sprint 03 akan membaca default ini bila tersedia.',
                       ),
                       items: academicPeriodItems,
                       onChanged: isSubmitting
@@ -240,15 +260,15 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
               ),
               const SizedBox(height: 16),
               _FormSection(
-                title: 'Kontak & Lokasi',
+                title: 'Kontak Wali',
                 icon: Icons.contact_phone_outlined,
                 description:
-                    'Memudahkan follow up orang tua dan kebutuhan kunjungan.',
+                    'Kontak utama untuk komunikasi dan kebutuhan les privat.',
                 children: [
                   TextFormField(
                     controller: _parentNameController,
                     decoration: _fieldDecoration(
-                      label: 'Nama orang tua/wali',
+                      label: 'Nama wali',
                       icon: Icons.family_restroom_outlined,
                     ),
                     textInputAction: TextInputAction.next,
@@ -257,9 +277,9 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
                   TextFormField(
                     controller: _whatsappController,
                     decoration: _fieldDecoration(
-                      label: 'WhatsApp',
+                      label: 'No. WhatsApp',
                       icon: Icons.chat_outlined,
-                      helperText: 'Isi angka saja, mis. 081234567890.',
+                      helperText: 'Gunakan kode negara jika diperlukan.',
                     ),
                     keyboardType: TextInputType.phone,
                     textInputAction: TextInputAction.next,
@@ -271,8 +291,6 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
                     decoration: _fieldDecoration(
                       label: 'Alamat',
                       icon: Icons.location_on_outlined,
-                      helperText:
-                          'Opsional. Berguna untuk les privat atau penjemputan.',
                     ),
                     maxLines: 2,
                   ),
@@ -343,10 +361,29 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
                           'Masukkan angka penuh sesuai tipe tarif yang dipilih.',
                     ),
                     keyboardType: TextInputType.number,
+                    inputFormatters: [
+                      TextInputFormatter.withFunction((oldValue, newValue) {
+                        final digits = _digitsOnly(newValue.text);
+                        if (digits.isEmpty) {
+                          return const TextEditingValue();
+                        }
+
+                        final formatted = _currencyFormatter.format(
+                          int.parse(digits),
+                        );
+                        return TextEditingValue(
+                          text: formatted,
+                          selection: TextSelection.collapsed(
+                            offset: formatted.length,
+                          ),
+                        );
+                      }),
+                    ],
                     textInputAction: TextInputAction.next,
                     validator: _validateRateAmount,
                   ),
                   const SizedBox(height: 12),
+                  const SizedBox(height: 16),
                   Text(
                     'Status',
                     style: Theme.of(context).textTheme.labelLarge?.copyWith(
@@ -468,7 +505,7 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
     _schoolController.text = student.school ?? '';
     _gradeController.text = student.grade ?? '';
     _defaultSubjectController.text = student.defaultSubject ?? '';
-    _rateAmountController.text = student.rateAmount.toString();
+    _rateAmountController.text = _formatAmount(student.rateAmount.toString());
     _noteController.text = student.note ?? '';
     _rateType = student.rateType;
     _status = student.status;
@@ -478,7 +515,7 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) return;
 
-    final amount = int.parse(_rateAmountController.text.trim());
+    final amount = int.parse(_digitsOnly(_rateAmountController.text));
     final data = StudentFormData(
       name: _nameController.text,
       parentName: _parentNameController.text,
@@ -546,11 +583,21 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
   }
 
   String? _validateRateAmount(String? value) {
-    final amount = int.tryParse(value?.trim() ?? '');
+    final amount = int.tryParse(_digitsOnly(value));
     if (amount == null || amount <= 0) {
       return 'Nominal tarif harus lebih dari 0';
     }
     return null;
+  }
+
+  String _digitsOnly(String? value) {
+    return (value ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+  }
+
+  String _formatAmount(String value) {
+    final digits = _digitsOnly(value);
+    if (digits.isEmpty) return '';
+    return _currencyFormatter.format(int.parse(digits));
   }
 
   List<DropdownMenuItem<int?>> _academicPeriodItems(
@@ -588,66 +635,6 @@ class _StudentFormScreenState extends ConsumerState<StudentFormScreen> {
   String _academicPeriodLabel(AcademicPeriod period) {
     final suffix = period.isActive ? ' (aktif)' : '';
     return '${period.name}$suffix';
-  }
-}
-
-class _FormIntroCard extends StatelessWidget {
-  const _FormIntroCard({required this.isEdit});
-
-  final bool isEdit;
-
-  @override
-  Widget build(BuildContext context) {
-    final colorScheme = Theme.of(context).colorScheme;
-
-    return Card(
-      color: colorScheme.primaryContainer.withValues(alpha: .72),
-      child: Padding(
-        padding: const EdgeInsets.all(20),
-        child: Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: colorScheme.primary.withValues(alpha: .12),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: Icon(
-                Icons.person_add_alt_1_outlined,
-                color: colorScheme.primary,
-              ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'Profil Siswa',
-                    style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                      fontWeight: FontWeight.w800,
-                      color: colorScheme.onPrimaryContainer,
-                    ),
-                  ),
-                  const SizedBox(height: 6),
-                  Text(
-                    isEdit
-                        ? 'Perbarui data murid, kontak, tarif, dan status dengan rapi.'
-                        : 'Lengkapi profil murid agar jadwal dan pembayaran lebih mudah dicatat.',
-                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                      color: colorScheme.onPrimaryContainer.withValues(
-                        alpha: .78,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
   }
 }
 
@@ -724,57 +711,43 @@ class _FormSection extends StatelessWidget {
     final colorScheme = Theme.of(context).colorScheme;
 
     return Card(
+      elevation: 0,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(20),
+        side: BorderSide(
+          color: colorScheme.outlineVariant.withValues(alpha: .5),
+        ),
+      ),
       child: Padding(
         padding: const EdgeInsets.all(18),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Container(
-              padding: const EdgeInsets.fromLTRB(14, 12, 14, 12),
-              decoration: BoxDecoration(
-                color: colorScheme.primaryContainer.withValues(alpha: .5),
-                borderRadius: BorderRadius.circular(20),
-              ),
-              child: Row(
-                children: [
-                  Container(
-                    padding: const EdgeInsets.all(10),
-                    decoration: BoxDecoration(
-                      color: colorScheme.primary.withValues(alpha: .14),
-                      borderRadius: BorderRadius.circular(14),
-                    ),
-                    child: Icon(icon, color: colorScheme.primary),
-                  ),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          title,
-                          style: Theme.of(context).textTheme.titleMedium
-                              ?.copyWith(
-                                fontWeight: FontWeight.w900,
-                                color: colorScheme.onPrimaryContainer,
-                              ),
-                        ),
-                        if (description != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            description!,
-                            style: Theme.of(context).textTheme.bodySmall
-                                ?.copyWith(
-                                  color: colorScheme.onPrimaryContainer
-                                      .withValues(alpha: .78),
-                                ),
-                          ),
-                        ],
-                      ],
+            Row(
+              children: [
+                Icon(icon, size: 20, color: colorScheme.primary),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    title,
+                    style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                      fontWeight: FontWeight.w800,
                     ),
                   ),
-                ],
-              ),
+                ),
+              ],
             ),
+            if (description != null) ...[
+              const SizedBox(height: 6),
+              Text(
+                description!,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+            const SizedBox(height: 14),
+            Divider(color: colorScheme.outlineVariant.withValues(alpha: .6)),
             const SizedBox(height: 14),
             ...children,
           ],

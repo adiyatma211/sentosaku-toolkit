@@ -22,6 +22,7 @@ class SessionFormScreen extends ConsumerStatefulWidget {
 }
 
 class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
+  final _currencyFormatter = NumberFormat.decimalPattern('id_ID');
   final _formKey = GlobalKey<FormState>();
   final _materialController = TextEditingController();
   final _homeworkController = TextEditingController();
@@ -62,7 +63,13 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
     return AppBackScope(
       fallbackPath: '/schedules/${widget.scheduleId}',
       child: Scaffold(
-        appBar: AppBar(title: const Text('Buat sesi')),
+        appBar: AppBar(
+          leading: IconButton(
+            onPressed: () => _handleBackNavigation(context),
+            icon: const Icon(Icons.arrow_back),
+          ),
+          title: const Text('Buat sesi'),
+        ),
         body: scheduleState.when(
           data: (detail) {
             if (detail == null) {
@@ -109,14 +116,14 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
 
   void _initialize(ScheduleDetail detail) {
     if (_initialized) return;
-    _feeAmountController.text = detail.student.rateAmount.toString();
+    _feeAmountController.text = _formatAmount(detail.student.rateAmount);
     _initialized = true;
   }
 
   Future<void> _submit(ScheduleDetail detail) async {
     if (!_formKey.currentState!.validate()) return;
 
-    final feeAmount = int.parse(_feeAmountController.text.trim());
+    final feeAmount = int.parse(_digitsOnly(_feeAmountController.text));
     try {
       final sessionId = await ref
           .read(sessionFormNotifierProvider.notifier)
@@ -146,6 +153,23 @@ class _SessionFormScreenState extends ConsumerState<SessionFormScreen> {
       if (!mounted) return;
       AppToast.error(context, 'Gagal menyimpan sesi', details: '$error');
     }
+  }
+
+  void _handleBackNavigation(BuildContext context) {
+    final router = GoRouter.of(context);
+    if (router.canPop()) {
+      router.pop();
+      return;
+    }
+    context.go('/schedules/${widget.scheduleId}');
+  }
+
+  String _digitsOnly(String? value) {
+    return (value ?? '').replaceAll(RegExp(r'[^0-9]'), '');
+  }
+
+  String _formatAmount(int value) {
+    return _currencyFormatter.format(value);
   }
 }
 
@@ -297,9 +321,28 @@ class _SessionFormContent extends StatelessWidget {
               border: OutlineInputBorder(),
             ),
             keyboardType: TextInputType.number,
-            inputFormatters: [FilteringTextInputFormatter.digitsOnly],
+            inputFormatters: [
+              TextInputFormatter.withFunction((oldValue, newValue) {
+                final digits = newValue.text.replaceAll(RegExp(r'[^0-9]'), '');
+                if (digits.isEmpty) {
+                  return const TextEditingValue();
+                }
+
+                final formatted = NumberFormat.decimalPattern(
+                  'id_ID',
+                ).format(int.parse(digits));
+                return TextEditingValue(
+                  text: formatted,
+                  selection: TextSelection.collapsed(
+                    offset: formatted.length,
+                  ),
+                );
+              }),
+            ],
             validator: (value) {
-              final amount = int.tryParse(value?.trim() ?? '');
+              final amount = int.tryParse(
+                (value ?? '').replaceAll(RegExp(r'[^0-9]'), ''),
+              );
               if (amount == null) return 'Biaya wajib diisi';
               if (amount < 0) return 'Biaya tidak valid';
               return null;
